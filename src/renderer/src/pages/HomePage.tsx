@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Settings, Video, Play, Images, X, Filter, Tag, Flame, FolderOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -16,10 +16,15 @@ import { MediaViewer } from '@/components/MediaViewer'
 
 const IMAGE_AWEME_TYPE = 68
 
+const PAGE_SIZE = 50
+
 export default function HomePage() {
   const [posts, setPosts] = useState<DbPost[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [coverPaths, setCoverPaths] = useState<Record<string, string>>({})
   const [selectedPost, setSelectedPost] = useState<DbPost | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -30,6 +35,7 @@ export default function HomePage() {
   const [sexyLevelRange, setSexyLevelRange] = useState<[number, number]>([0, 10])
   const [showFilters, setShowFilters] = useState(false)
   const [analyzedOnly, setAnalyzedOnly] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   const filters = useMemo<PostFilters>(() => ({
     secUid: selectedSecUid || undefined,
@@ -40,7 +46,10 @@ export default function HomePage() {
   }), [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly])
 
   useEffect(() => {
-    loadPosts()
+    setPosts([])
+    setPage(1)
+    setHasMore(true)
+    loadPosts(1, true)
   }, [filters])
 
   useEffect(() => {
@@ -52,6 +61,24 @@ export default function HomePage() {
       loadCoverPaths(posts)
     }
   }, [posts])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, page])
 
   const loadCoverPaths = async (postList: DbPost[]) => {
     const paths: Record<string, string> = {}
@@ -66,19 +93,35 @@ export default function HomePage() {
     setCoverPaths(paths)
   }
 
-  const loadPosts = async () => {
-    setLoading(true)
+  const loadPosts = async (pageNum: number, reset = false) => {
+    if (reset) {
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
     try {
-      const result = await window.api.post.getAll(1, 100, filters)
-      setPosts(result.posts)
+      const result = await window.api.post.getAll(pageNum, PAGE_SIZE, filters)
+      if (reset) {
+        setPosts(result.posts)
+      } else {
+        setPosts((prev) => [...prev, ...result.posts])
+      }
       setTotal(result.total)
       setAuthors(result.authors)
+      setHasMore(result.posts.length === PAGE_SIZE)
     } catch (error) {
       console.error('Failed to load posts:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
+
+  const loadMore = useCallback(() => {
+    const nextPage = page + 1
+    setPage(nextPage)
+    loadPosts(nextPage, false)
+  }, [page, filters])
 
   const loadTags = async () => {
     try {
@@ -144,7 +187,9 @@ export default function HomePage() {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">dYmanager</h1>
           {total > 0 && (
-            <span className="text-sm text-muted-foreground">共 {total} 个作品</span>
+            <span className="text-sm text-muted-foreground">
+              已加载 {posts.length} / {total} 个作品
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -276,8 +321,9 @@ export default function HomePage() {
               </Link>
             </div>
           ) : (
-            /* Video Grid */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <>
+              {/* Video Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {posts.map((post) => (
                 <ContextMenu key={post.id}>
                   <ContextMenuTrigger asChild>
@@ -357,6 +403,16 @@ export default function HomePage() {
                 </ContextMenu>
               ))}
             </div>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
+              {loadingMore && (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-foreground" />
+              )}
+              {!hasMore && posts.length > 0 && (
+                <span className="text-sm text-muted-foreground">已加载全部 {total} 个作品</span>
+              )}
+            </div>
+            </>
           )}
         </main>
       </ScrollArea>
