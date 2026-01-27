@@ -15,7 +15,7 @@ asarUnpack:
   - node_modules/@ffprobe-installer/**
 win:
   executableName: dymanager
-  sign: false
+  forceCodeSigning: false
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
