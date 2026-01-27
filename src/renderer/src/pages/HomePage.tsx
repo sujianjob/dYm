@@ -40,8 +40,8 @@ export default function HomePage() {
   const filters = useMemo<PostFilters>(() => ({
     secUid: selectedSecUid || undefined,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
-    minSexyLevel: sexyLevelRange[0] > 0 ? sexyLevelRange[0] : undefined,
-    maxSexyLevel: sexyLevelRange[1] < 10 ? sexyLevelRange[1] : undefined,
+    minContentLevel: sexyLevelRange[0] > 0 ? sexyLevelRange[0] : undefined,
+    maxContentLevel: sexyLevelRange[1] < 10 ? sexyLevelRange[1] : undefined,
     analyzedOnly: analyzedOnly || undefined
   }), [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly])
 
@@ -383,10 +383,10 @@ export default function HomePage() {
                             )}
                           </div>
                         )}
-                        {post.analysis_sexy_level !== null && post.analysis_sexy_level > 0 && (
+                        {post.analysis_content_level !== null && post.analysis_content_level > 0 && (
                           <div className="flex items-center gap-1 mt-1.5">
                             <Flame className="h-3 w-3 text-orange-500" />
-                            <span className="text-xs text-orange-500">{post.analysis_sexy_level}</span>
+                            <span className="text-xs text-orange-500">{post.analysis_content_level}</span>
                           </div>
                         )}
                       </div>

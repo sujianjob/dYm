@@ -241,7 +241,7 @@ async function callVisionAPI(
     category: result.category || '',
     summary: result.summary || '',
     scene: result.scene || '',
-    sexy_level: typeof result.sexy_level === 'number' ? result.sexy_level : 0
+    content_level: typeof result.content_level === 'number' ? result.content_level : 0
   }
 }
 

@@ -22,7 +22,7 @@ const DEFAULT_ANALYSIS_PROMPT = `你是视频内容分析助手。分析视频�
 
 【拍摄】特写、全身、半身、航拍、延时、慢动作
 
-## 自定义等级评判（level 1-10）：
+## 内容等级评判（content_level 1-10）：
 根据内容质量、创意程度、制作水平综合评分
 
 ## 输出字段：
@@ -30,10 +30,10 @@ const DEFAULT_ANALYSIS_PROMPT = `你是视频内容分析助手。分析视频�
 - category: 主分类
 - summary: 一句话描述（15字内）
 - scene: 场景
-- sexy_level: 自定义等级1-10
+- content_level: 内容等级1-10
 
 ## 输出格式（严格JSON，无其他文字）：
-{"tags":["标签1","标签2"],"category":"分类","summary":"描述","scene":"场景","sexy_level":5}`
+{"tags":["标签1","标签2"],"category":"分类","summary":"描述","scene":"场景","content_level":5}`
 
 let db: Database.Database | null = null
 
@@ -162,7 +162,7 @@ export function initDatabase(): void {
     { name: 'analysis_category', sql: 'ALTER TABLE posts ADD COLUMN analysis_category TEXT' },
     { name: 'analysis_summary', sql: 'ALTER TABLE posts ADD COLUMN analysis_summary TEXT' },
     { name: 'analysis_scene', sql: 'ALTER TABLE posts ADD COLUMN analysis_scene TEXT' },
-    { name: 'analysis_sexy_level', sql: 'ALTER TABLE posts ADD COLUMN analysis_sexy_level INTEGER' },
+    { name: 'analysis_content_level', sql: 'ALTER TABLE posts ADD COLUMN analysis_content_level INTEGER' },
     { name: 'analyzed_at', sql: 'ALTER TABLE posts ADD COLUMN analyzed_at INTEGER' }
   ]
   for (const col of analysisColumns) {
@@ -171,6 +171,13 @@ export function initDatabase(): void {
     } catch {
       // 列已存在
     }
+  }
+
+  // 迁移：重命名 analysis_sexy_level 为 analysis_content_level
+  try {
+    database.exec(`ALTER TABLE posts RENAME COLUMN analysis_sexy_level TO analysis_content_level`)
+  } catch {
+    // 列不存在或已重命名
   }
 
   // 初始化默认设置
@@ -537,7 +544,7 @@ export interface DbPost {
   analysis_category: string | null
   analysis_summary: string | null
   analysis_scene: string | null
-  analysis_sexy_level: number | null
+  analysis_content_level: number | null
   analyzed_at: number | null
 }
 
@@ -608,8 +615,8 @@ export interface PostAuthor {
 export interface PostFilters {
   secUid?: string
   tags?: string[]
-  minSexyLevel?: number
-  maxSexyLevel?: number
+  minContentLevel?: number
+  maxContentLevel?: number
   analyzedOnly?: boolean
 }
 
@@ -653,14 +660,14 @@ export function getAllPosts(
     filters.tags.forEach((tag) => params.push(`%"${tag}"%`))
   }
 
-  if (filters?.minSexyLevel !== undefined) {
-    conditions.push('analysis_sexy_level >= ?')
-    params.push(filters.minSexyLevel)
+  if (filters?.minContentLevel !== undefined) {
+    conditions.push('analysis_content_level >= ?')
+    params.push(filters.minContentLevel)
   }
 
-  if (filters?.maxSexyLevel !== undefined) {
-    conditions.push('analysis_sexy_level <= ?')
-    params.push(filters.maxSexyLevel)
+  if (filters?.maxContentLevel !== undefined) {
+    conditions.push('analysis_content_level <= ?')
+    params.push(filters.maxContentLevel)
   }
 
   if (filters?.analyzedOnly) {
@@ -719,7 +726,7 @@ export interface AnalysisResult {
   category: string
   summary: string
   scene: string
-  sexy_level: number
+  content_level: number
 }
 
 export function getUnanalyzedPostsCount(secUid?: string): number {
@@ -836,7 +843,7 @@ export function updatePostAnalysis(id: number, result: AnalysisResult): void {
       analysis_category = ?,
       analysis_summary = ?,
       analysis_scene = ?,
-      analysis_sexy_level = ?,
+      analysis_content_level = ?,
       analyzed_at = strftime('%s', 'now')
     WHERE id = ?
   `).run(
@@ -844,7 +851,7 @@ export function updatePostAnalysis(id: number, result: AnalysisResult): void {
     result.category,
     result.summary,
     result.scene,
-    result.sexy_level,
+    result.content_level,
     id
   )
 }

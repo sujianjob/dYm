@@ -154,7 +154,7 @@ declare global {
     analysis_category: string | null
     analysis_summary: string | null
     analysis_scene: string | null
-    analysis_sexy_level: number | null
+    analysis_content_level: number | null
     analyzed_at: number | null
   }
 
@@ -174,8 +174,8 @@ declare global {
   interface PostFilters {
     secUid?: string
     tags?: string[]
-    minSexyLevel?: number
-    maxSexyLevel?: number
+    minContentLevel?: number
+    maxContentLevel?: number
     analyzedOnly?: boolean
   }
 
