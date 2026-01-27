@@ -336,7 +336,7 @@ export async function startAnalysis(secUid?: string): Promise<void> {
   }
 
   const apiUrl = getSetting('grok_api_url') || 'https://api.x.ai/v1'
-  const model = getSetting('analysis_model') || 'grok-2-vision-latest'
+  const model = getSetting('analysis_model') || 'grok-4-fast'
   const prompt = getSetting('analysis_prompt') || ''
   const concurrency = parseInt(getSetting('analysis_concurrency') || '2') || 2
   const rpm = parseInt(getSetting('analysis_rpm') || '10') || 10
