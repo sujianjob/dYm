@@ -15,6 +15,8 @@ declare global {
 
   interface CookieAPI {
     fetchDouyin: () => Promise<string>
+    refreshSilent: () => Promise<string>
+    isRefreshing: () => Promise<boolean>
   }
 
   interface UserProfile {

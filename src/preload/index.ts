@@ -18,7 +18,9 @@ const settingsAPI = {
 }
 
 const cookieAPI = {
-  fetchDouyin: (): Promise<string> => ipcRenderer.invoke('cookie:fetchDouyin')
+  fetchDouyin: (): Promise<string> => ipcRenderer.invoke('cookie:fetchDouyin'),
+  refreshSilent: (): Promise<string> => ipcRenderer.invoke('cookie:refreshSilent'),
+  isRefreshing: (): Promise<boolean> => ipcRenderer.invoke('cookie:isRefreshing')
 }
 
 const douyinAPI = {

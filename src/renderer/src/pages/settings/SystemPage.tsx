@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import { Save, FolderOpen, Key, Cookie, Database, CheckCircle, Chrome, Loader2, Download, Sparkles } from 'lucide-react'
+import { Save, FolderOpen, Key, Cookie, Database, CheckCircle, Chrome, Loader2, Download, Sparkles, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +16,7 @@ export default function SystemPage() {
   const [maxDownloadCount, setMaxDownloadCount] = useState('50')
   const [videoDownloadConcurrency, setVideoDownloadConcurrency] = useState('3')
   const [fetchingCookie, setFetchingCookie] = useState(false)
+  const [refreshingCookie, setRefreshingCookie] = useState(false)
   const [verifyingApi, setVerifyingApi] = useState(false)
   const [analysisConcurrency, setAnalysisConcurrency] = useState('2')
   const [analysisRpm, setAnalysisRpm] = useState('10')
@@ -56,6 +57,23 @@ export default function SystemPage() {
       toast.error('获取 Cookie 失败')
     } finally {
       setFetchingCookie(false)
+    }
+  }
+
+  const handleRefreshCookie = async () => {
+    setRefreshingCookie(true)
+    try {
+      const result = await window.api.cookie.refreshSilent()
+      if (result) {
+        setCookie(result)
+        toast.success('Cookie 刷新成功')
+      } else {
+        toast.warning('刷新失败，请尝试手动获取')
+      }
+    } catch {
+      toast.error('刷新 Cookie 失败')
+    } finally {
+      setRefreshingCookie(false)
     }
   }
 
@@ -149,19 +167,34 @@ export default function SystemPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="cookie">Cookie</Label>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleFetchCookie}
-                disabled={fetchingCookie}
-              >
-                {fetchingCookie ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Chrome className="h-4 w-4 mr-2" />
-                )}
-                {fetchingCookie ? '等待登录...' : '从浏览器获取'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshCookie}
+                  disabled={refreshingCookie || fetchingCookie}
+                >
+                  {refreshingCookie ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {refreshingCookie ? '刷新中...' : '静默刷新'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleFetchCookie}
+                  disabled={fetchingCookie || refreshingCookie}
+                >
+                  {fetchingCookie ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Chrome className="h-4 w-4 mr-2" />
+                  )}
+                  {fetchingCookie ? '等待登录...' : '从浏览器获取'}
+                </Button>
+              </div>
             </div>
             <Textarea
               id="cookie"
@@ -171,7 +204,7 @@ export default function SystemPage() {
               className="min-h-32 font-mono text-sm resize-none"
             />
             <p className="text-xs text-muted-foreground">
-              点击"从浏览器获取"将打开 Chrome，登录抖音后关闭浏览器即可自动获取
+              "静默刷新"将在后台自动刷新 Cookie；"从浏览器获取"将打开 Chrome，登录抖音后关闭浏览器即可自动获取
             </p>
           </div>
           <Separator />

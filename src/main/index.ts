@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog } from 'electron'
 import { join } from 'path'
-import { existsSync, readdirSync, createWriteStream } from 'fs'
-import { mkdir } from 'fs/promises'
+import { existsSync, readdirSync, createWriteStream, createReadStream, statSync } from 'fs'
+import { mkdir, stat } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -31,7 +31,7 @@ import {
   type UpdateUserSettingsInput,
   type PostFilters
 } from './database'
-import { fetchDouyinCookie } from './services/cookie'
+import { fetchDouyinCookie, refreshDouyinCookieSilent, isCookieRefreshing } from './services/cookie'
 import {
   initDouyinHandler,
   refreshDouyinHandler,
@@ -191,10 +191,65 @@ protocol.registerSchemesAsPrivileged([
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // 注册 local:// 协议处理器
-  protocol.handle('local', (request) => {
+  // 注册 local:// 协议处理器（支持 Range 请求以允许视频进度条拖动）
+  protocol.handle('local', async (request) => {
     const filePath = decodeURIComponent(request.url.replace('local://', ''))
-    return net.fetch(`file://${filePath}`)
+
+    try {
+      const fileStat = statSync(filePath)
+      const fileSize = fileStat.size
+      const rangeHeader = request.headers.get('Range')
+
+      // 根据文件扩展名确定 MIME 类型
+      const ext = filePath.split('.').pop()?.toLowerCase() || ''
+      const mimeTypes: Record<string, string> = {
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime',
+        avi: 'video/x-msvideo',
+        mp3: 'audio/mpeg',
+        m4a: 'audio/mp4',
+        wav: 'audio/wav',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+        gif: 'image/gif'
+      }
+      const contentType = mimeTypes[ext] || 'application/octet-stream'
+
+      if (rangeHeader) {
+        // 解析 Range 请求
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/)
+        if (match) {
+          const start = match[1] ? parseInt(match[1], 10) : 0
+          const end = match[2] ? parseInt(match[2], 10) : fileSize - 1
+          const chunkSize = end - start + 1
+
+          const stream = createReadStream(filePath, { start, end })
+          const chunks: Buffer[] = []
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk))
+          }
+          const buffer = Buffer.concat(chunks)
+
+          return new Response(buffer, {
+            status: 206,
+            headers: {
+              'Content-Type': contentType,
+              'Content-Length': String(chunkSize),
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes'
+            }
+          })
+        }
+      }
+
+      // 无 Range 请求时返回完整文件
+      return net.fetch(`file://${filePath}`)
+    } catch {
+      return new Response('File not found', { status: 404 })
+    }
   })
 
   // Set app user model id for windows
@@ -236,6 +291,11 @@ app.whenReady().then(() => {
     }
     return cookie
   })
+  ipcMain.handle('cookie:refreshSilent', async () => {
+    const cookie = await refreshDouyinCookieSilent()
+    return cookie
+  })
+  ipcMain.handle('cookie:isRefreshing', () => isCookieRefreshing())
 
   // Douyin IPC handlers
   ipcMain.handle('douyin:getUserProfile', (_event, url: string) => fetchUserProfile(url))
