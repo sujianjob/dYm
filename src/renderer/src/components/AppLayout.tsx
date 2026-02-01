@@ -25,7 +25,7 @@ export function AppLayout() {
         {/* Logo */}
         <div className="h-[72px] flex items-center gap-3 px-6 border-b border-[#EAE6E1]">
           <Download className="h-7 w-7 text-[#FE2C55]" />
-          <span className="text-lg font-semibold text-[#312E2A]">抖音下载器</span>
+          <span className="text-lg font-semibold text-[#312E2A]">dYm</span>
         </div>
 
         {/* Navigation */}
