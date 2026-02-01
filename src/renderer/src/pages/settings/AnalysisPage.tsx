@@ -1,26 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Play, Square, Sparkles, Clock, CheckCircle, Users } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
+import { Sparkles, ChevronDown, Square, Play, Search } from 'lucide-react'
+import { MediaViewer } from '@/components/MediaViewer'
 
 export default function AnalysisPage() {
+  // Users
   const [userStats, setUserStats] = useState<UserAnalysisStats[]>([])
-  const [totalStats, setTotalStats] = useState<TotalAnalysisStats>({ total: 0, analyzed: 0, unanalyzed: 0 })
+  const [selectedUserId, setSelectedUserId] = useState<string>('all')
+  const [showUserDropdown, setShowUserDropdown] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+
+  // Settings
+  const [prompt, setPrompt] = useState('')
+  const [concurrency, setConcurrency] = useState('3')
+  const [slices, setSlices] = useState('4')
+  const [rpm, setRpm] = useState('20')
+
+  // Analysis state
   const [isRunning, setIsRunning] = useState(false)
-  const [currentSecUid, setCurrentSecUid] = useState<string | null>(null)
   const [progress, setProgress] = useState<AnalysisProgress | null>(null)
+  const [totalStats, setTotalStats] = useState<TotalAnalysisStats>({ total: 0, analyzed: 0, unanalyzed: 0 })
+  const [systemResource, setSystemResource] = useState<SystemResourceInfo | null>(null)
+
+  // Posts data
+  const [allAnalyzedPosts, setAllAnalyzedPosts] = useState<DbPost[]>([])
+  const [coverCache, setCoverCache] = useState<Map<number, string>>(new Map())
+
+  // Video preview
+  const [selectedPost, setSelectedPost] = useState<DbPost | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
 
   useEffect(() => {
     loadData()
+    loadSettings()
     checkRunningStatus()
 
     const unsubscribe = window.api.analysis.onProgress((p) => {
       setProgress(p)
       if (p.status === 'completed' || p.status === 'failed' || p.status === 'stopped') {
         setIsRunning(false)
-        setCurrentSecUid(null)
         loadData()
       }
     })
@@ -28,13 +46,49 @@ export default function AnalysisPage() {
     return () => unsubscribe()
   }, [])
 
+  // Poll system resources when running
+  useEffect(() => {
+    if (!isRunning) {
+      setSystemResource(null)
+      return
+    }
+
+    const pollResource = async () => {
+      const resource = await window.api.system.getResourceUsage()
+      setSystemResource(resource)
+    }
+
+    pollResource()
+    const interval = setInterval(pollResource, 2000)
+
+    return () => clearInterval(interval)
+  }, [isRunning])
+
   const loadData = async () => {
-    const [stats, total] = await Promise.all([
+    const [userStatsList, stats, postsData] = await Promise.all([
       window.api.analysis.getUserStats(),
-      window.api.analysis.getTotalStats()
+      window.api.analysis.getTotalStats(),
+      window.api.post.getAll(1, 100, { analyzedOnly: true })
     ])
-    setUserStats(stats)
-    setTotalStats(total)
+    setUserStats(userStatsList)
+    setTotalStats(stats)
+    setAllAnalyzedPosts(postsData.posts)
+
+    // Load covers for display posts
+    const covers = new Map<number, string>()
+    for (const post of postsData.posts.slice(0, 10)) {
+      const cover = await window.api.post.getCoverPath(post.sec_uid, post.folder_name)
+      if (cover) covers.set(post.id, cover)
+    }
+    setCoverCache(covers)
+  }
+
+  const loadSettings = async () => {
+    const settings = await window.api.settings.getAll()
+    setPrompt(settings.analysis_prompt || '')
+    setConcurrency(settings.analysis_concurrency || '3')
+    setSlices(settings.analysis_slices || '4')
+    setRpm(settings.analysis_rpm || '20')
   }
 
   const checkRunningStatus = async () => {
@@ -42,16 +96,23 @@ export default function AnalysisPage() {
     setIsRunning(running)
   }
 
-  const handleStart = async (secUid?: string) => {
+  const handleStart = async () => {
+    // Save settings first
+    await Promise.all([
+      window.api.settings.set('analysis_prompt', prompt),
+      window.api.settings.set('analysis_concurrency', concurrency),
+      window.api.settings.set('analysis_slices', slices),
+      window.api.settings.set('analysis_rpm', rpm)
+    ])
+
     try {
       setIsRunning(true)
-      setCurrentSecUid(secUid || null)
       setProgress(null)
+      const secUid = selectedUserId === 'all' ? undefined : selectedUserId
       await window.api.analysis.start(secUid)
     } catch (error) {
       toast.error((error as Error).message)
       setIsRunning(false)
-      setCurrentSecUid(null)
     }
   }
 
@@ -64,156 +125,433 @@ export default function AnalysisPage() {
     }
   }
 
+  const handleVideoClick = (post: DbPost) => {
+    setSelectedPost(post)
+    setViewerOpen(true)
+  }
+
+  const selectedUser = userStats.find((u) => u.sec_uid === selectedUserId)
+
+  // Filter users by search
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return userStats
+    const search = userSearch.toLowerCase()
+    return userStats.filter((u) => u.nickname.toLowerCase().includes(search))
+  }, [userStats, userSearch])
+
+  // Tag colors
+  const tagColors = [
+    { bg: '#FE2C5520', text: '#FE2C55' },
+    { bg: '#25F4EE20', text: '#25F4EE' },
+    { bg: '#22C55E20', text: '#22C55E' },
+    { bg: '#F59E0B20', text: '#F59E0B' },
+    { bg: '#8B5CF620', text: '#8B5CF6' },
+    { bg: '#EC489920', text: '#EC4899' },
+    { bg: '#06B6D420', text: '#06B6D4' },
+    { bg: '#EF444420', text: '#EF4444' }
+  ]
+
+  // Calculate tag counts from all analyzed posts
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const post of allAnalyzedPosts) {
+      if (post.analysis_tags) {
+        try {
+          const tags = JSON.parse(post.analysis_tags) as string[]
+          tags.forEach((tag) => {
+            counts[tag] = (counts[tag] || 0) + 1
+          })
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+  }, [allAnalyzedPosts])
+
+  // Recent posts for display (max 10)
+  const recentPosts = allAnalyzedPosts.slice(0, 10)
+
   const progressPercent = progress?.totalPosts
     ? Math.round(((progress.analyzedCount + progress.failedCount) / progress.totalPosts) * 100)
     : 0
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">视频分析</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          使用 Grok API 对视频进行智能分析和标签
-        </p>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] flex-shrink-0">
+        <h1 className="text-xl font-semibold text-[#312E2A]">AI 视频分析</h1>
+        {isRunning ? (
+          <button
+            onClick={handleStop}
+            className="h-9 px-4 rounded-lg bg-[#FE2C55] text-white text-sm font-medium flex items-center gap-2 hover:bg-[#E91E45] transition-colors"
+          >
+            <Square className="h-4 w-4" />
+            停止分析
+          </button>
+        ) : (
+          <button
+            onClick={handleStart}
+            disabled={totalStats.unanalyzed === 0}
+            className="h-9 px-4 rounded-lg bg-[#FE2C55] text-white text-sm font-medium flex items-center gap-2 hover:bg-[#E91E45] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sparkles className="h-4 w-4" />
+            开始分析
+          </button>
+        )}
       </div>
 
-      {/* Stats Cards - 放在最上面 */}
-      <div className="grid grid-cols-3 gap-6">
-        <div className="flex items-center gap-4 p-4 rounded-lg border">
-          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <Sparkles className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-semibold">{totalStats.total}</p>
-            <p className="text-sm text-muted-foreground">总视频数</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 p-4 rounded-lg border">
-          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle className="h-5 w-5 text-green-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-semibold">{totalStats.analyzed}</p>
-            <p className="text-sm text-muted-foreground">已分析</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 p-4 rounded-lg border">
-          <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
-            <Clock className="h-5 w-5 text-yellow-600" />
-          </div>
-          <div>
-            <p className="text-2xl font-semibold">{totalStats.unanalyzed}</p>
-            <p className="text-sm text-muted-foreground">待分析</p>
-          </div>
-        </div>
-      </div>
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden p-6">
+        <div className="flex gap-6 h-full">
+          {/* Left Panel - 320px */}
+          <div className="w-80 flex-shrink-0 space-y-5 overflow-y-auto">
+            {/* Select User Card */}
+            <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+              <h3 className="text-[15px] font-semibold text-[#312E2A]">选择用户</h3>
+              <p className="text-[13px] text-[#B8B2AD] mt-1 mb-4">选择要分析的用户视频</p>
 
-      {/* Progress Card - 只在运行时显示 */}
-      {isRunning && progress && (
-        <Card>
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">正在分析</CardTitle>
-                <CardDescription>{progress.message}</CardDescription>
-              </div>
-              <Button variant="destructive" size="sm" onClick={handleStop}>
-                <Square className="h-4 w-4 mr-2" />
-                停止
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                {progress.currentIndex} / {progress.totalPosts}
-              </span>
-              <span className="font-medium">{progressPercent}%</span>
-            </div>
-            <Progress value={progressPercent} className="h-2" />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>成功: {progress.analyzedCount}</span>
-              <span>失败: {progress.failedCount}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* User Stats List */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">用户分析统计</CardTitle>
-              <CardDescription>点击分析按钮开始分析对应用户的视频</CardDescription>
-            </div>
-            {!isRunning && totalStats.unanalyzed > 0 && (
-              <Button onClick={() => handleStart()} size="sm">
-                <Play className="h-4 w-4 mr-2" />
-                分析全部
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {userStats.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <Users className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm">暂无用户数据</p>
-              <p className="text-xs mt-1">添加用户并下载视频后可以进行分析</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {userStats.map((user) => {
-                const isCurrentUser = isRunning && currentSecUid === user.sec_uid
-                return (
-                  <div
-                    key={user.sec_uid}
-                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                      isCurrentUser ? 'bg-primary/5 border-primary/30' : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                        {user.nickname.charAt(0)}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(!showUserDropdown)
+                    if (!showUserDropdown) setUserSearch('')
+                  }}
+                  className="w-full h-11 px-4 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] flex items-center justify-between text-sm"
+                >
+                  <span className="text-[#312E2A]">
+                    {selectedUserId === 'all' ? '全部用户' : selectedUser?.nickname || '选择用户'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#B8B2AD]">
+                      {selectedUserId === 'all'
+                        ? `${totalStats.analyzed}/${totalStats.total}`
+                        : selectedUser
+                          ? `${selectedUser.analyzed}/${selectedUser.total}`
+                          : ''}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-[#B8B2AD]" />
+                  </div>
+                </button>
+                {showUserDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg border border-[#EAE6E1] shadow-lg z-10 max-h-72 flex flex-col">
+                    {/* Search input */}
+                    <div className="p-2 border-b border-[#EAE6E1]">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#B8B2AD]" />
+                        <input
+                          type="text"
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          placeholder="搜索用户..."
+                          className="w-full h-8 pl-8 pr-3 rounded-md bg-[#F7F5F3] text-sm text-[#312E2A] placeholder:text-[#B8B2AD] focus:outline-none focus:ring-1 focus:ring-[#FE2C55]"
+                          autoFocus
+                        />
                       </div>
-                      <span className="font-medium">{user.nickname}</span>
-                      {isCurrentUser && (
-                        <span className="text-xs text-primary animate-pulse">分析中...</span>
-                      )}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-green-600">{user.analyzed} 已分析</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-yellow-600">{user.unanalyzed} 待分析</span>
-                        <span className="text-muted-foreground">/</span>
-                        <span className="text-muted-foreground">{user.total} 总计</span>
-                      </div>
-                      {isCurrentUser ? (
-                        <Button size="sm" variant="destructive" onClick={handleStop}>
-                          <Square className="h-4 w-4 mr-1" />
-                          停止
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleStart(user.sec_uid)}
-                          disabled={isRunning || user.unanalyzed === 0}
+                    {/* User list */}
+                    <div className="overflow-y-auto flex-1">
+                      {!userSearch && (
+                        <button
+                          onClick={() => {
+                            setSelectedUserId('all')
+                            setShowUserDropdown(false)
+                            setUserSearch('')
+                          }}
+                          className={`w-full px-4 py-2.5 text-left hover:bg-[#F7F5F3] transition-colors flex items-center justify-between ${
+                            selectedUserId === 'all' ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                          }`}
                         >
-                          <Play className="h-4 w-4 mr-1" />
-                          分析
-                        </Button>
+                          <span className="text-sm">全部用户</span>
+                          <span className="text-xs text-[#B8B2AD]">
+                            {totalStats.analyzed}/{totalStats.total}
+                          </span>
+                        </button>
+                      )}
+                      {filteredUsers.length > 0 ? (
+                        filteredUsers.map((user) => (
+                          <button
+                            key={user.sec_uid}
+                            onClick={() => {
+                              setSelectedUserId(user.sec_uid)
+                              setShowUserDropdown(false)
+                              setUserSearch('')
+                            }}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-[#F7F5F3] transition-colors flex items-center justify-between ${
+                              selectedUserId === user.sec_uid ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                            }`}
+                          >
+                            <span className="text-sm">{user.nickname}</span>
+                            <span className={`text-xs ${user.unanalyzed > 0 ? 'text-[#FE2C55]' : 'text-[#B8B2AD]'}`}>
+                              {user.analyzed}/{user.total}
+                            </span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-[#B8B2AD] text-center">
+                          未找到匹配用户
+                        </div>
                       )}
                     </div>
                   </div>
-                )
-              })}
+                )}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* Prompt Config Card */}
+            <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+              <h3 className="text-[15px] font-semibold text-[#312E2A]">分析提示词</h3>
+              <p className="text-xs text-[#B8B2AD] mt-1 mb-4">AI将根据提示词分析视频内容并生成标签</p>
+
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={`请分析这个视频的内容，包括：\n1. 视频主题和类型\n2. 主要内容描述\n3. 情感倾向（正面/负面/中性）\n4. 生成3-5个相关标签`}
+                rows={5}
+                className="w-full px-3 py-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-[13px] text-[#7A7570] leading-relaxed resize-none focus:outline-none focus:border-[#FE2C55]"
+              />
+            </div>
+
+            {/* Analysis Params Card */}
+            <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+              <h3 className="text-[15px] font-semibold text-[#312E2A] mb-4">分析参数</h3>
+
+              {/* Concurrency */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm text-[#312E2A]">分析并发数</p>
+                  <p className="text-[11px] text-[#B8B2AD] mt-0.5">同时分析的视频数量</p>
+                </div>
+                <input
+                  type="number"
+                  value={concurrency}
+                  onChange={(e) => setConcurrency(e.target.value)}
+                  min="1"
+                  max="10"
+                  className="w-20 h-9 px-3 rounded-md bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono text-center focus:outline-none focus:border-[#FE2C55]"
+                />
+              </div>
+
+              {/* Slices */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm text-[#312E2A]">截图数量</p>
+                  <p className="text-[11px] text-[#B8B2AD] mt-0.5">每个视频截取的图片数</p>
+                </div>
+                <input
+                  type="number"
+                  value={slices}
+                  onChange={(e) => setSlices(e.target.value)}
+                  min="1"
+                  max="10"
+                  className="w-20 h-9 px-3 rounded-md bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono text-center focus:outline-none focus:border-[#FE2C55]"
+                />
+              </div>
+
+              {/* RPM */}
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm text-[#312E2A]">每分钟请求数</p>
+                  <p className="text-[11px] text-[#B8B2AD] mt-0.5">API请求频率限制</p>
+                </div>
+                <input
+                  type="number"
+                  value={rpm}
+                  onChange={(e) => setRpm(e.target.value)}
+                  min="1"
+                  max="60"
+                  className="w-20 h-9 px-3 rounded-md bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono text-center focus:outline-none focus:border-[#FE2C55]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel - Fill */}
+          <div className="flex-1 min-w-0 min-h-0">
+            {/* Results Card */}
+            <div className="bg-white rounded-xl border border-[#EAE6E1] h-full flex flex-col overflow-hidden">
+              {/* Results Header */}
+              <div className="h-14 flex items-center justify-between px-5 border-b border-[#EAE6E1] flex-shrink-0">
+                <h3 className="text-[15px] font-semibold text-[#312E2A]">分析结果</h3>
+                <span className="text-[13px] text-[#B8B2AD]">
+                  已分析 {totalStats.analyzed}/{totalStats.total} 个视频
+                </span>
+              </div>
+
+              {/* Results Content */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                {/* Progress Section - Show when running */}
+                {isRunning && progress && (
+                  <div className="bg-[#FEE2E8] rounded-lg p-4">
+                    {/* Progress bar */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-[#FE2C55]">正在分析...</span>
+                      <span className="text-sm font-mono text-[#FE2C55]">
+                        {progress.analyzedCount + progress.failedCount}/{progress.totalPosts}
+                      </span>
+                    </div>
+                    <div className="h-2 bg-white rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#FE2C55] transition-all duration-300"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="flex items-center justify-between mt-3 text-xs">
+                      <div className="flex gap-3">
+                        <span className="text-[#22C55E]">✓ 成功 {progress.analyzedCount}</span>
+                        <span className="text-[#EF4444]">✗ 失败 {progress.failedCount}</span>
+                      </div>
+                      <span className="text-[#7A7570]">{progressPercent}%</span>
+                    </div>
+
+                    {/* System resource */}
+                    {systemResource && (
+                      <div className="flex gap-4 mt-3 pt-3 border-t border-[#FE2C55]/20">
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-[#7A7570]">CPU</span>
+                            <span className="font-mono text-[#312E2A]">{systemResource.cpuUsage}%</span>
+                          </div>
+                          <div className="h-1.5 bg-white rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                systemResource.cpuUsage > 80 ? 'bg-[#EF4444]' : systemResource.cpuUsage > 50 ? 'bg-[#F59E0B]' : 'bg-[#22C55E]'
+                              }`}
+                              style={{ width: `${systemResource.cpuUsage}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-[#7A7570]">内存</span>
+                            <span className="font-mono text-[#312E2A]">
+                              {systemResource.memoryUsed}G/{systemResource.memoryTotal}G
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-white rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${
+                                systemResource.memoryUsage > 80 ? 'bg-[#EF4444]' : systemResource.memoryUsage > 50 ? 'bg-[#F59E0B]' : 'bg-[#22C55E]'
+                              }`}
+                              style={{ width: `${systemResource.memoryUsage}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Current video */}
+                    {progress.message && (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#FE2C55]/20">
+                        <Play className="h-3 w-3 text-[#7A7570] flex-shrink-0" />
+                        <p className="text-xs text-[#7A7570] truncate">{progress.message}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tag Section */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[#312E2A] mb-3">热门标签</h4>
+                  {tagCounts.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {tagCounts.map(([tag, count], idx) => {
+                        const color = tagColors[idx % tagColors.length]
+                        return (
+                          <span
+                            key={tag}
+                            className="h-8 px-3.5 rounded-full text-[13px] flex items-center"
+                            style={{ backgroundColor: color.bg, color: color.text }}
+                          >
+                            {tag} ({count})
+                          </span>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#B8B2AD]">暂无标签数据</p>
+                  )}
+                </div>
+
+                {/* Recent Videos Section */}
+                <div>
+                  <h4 className="text-sm font-semibold text-[#312E2A] mb-3">最近分析的视频</h4>
+                  {recentPosts.length > 0 ? (
+                    <div className="space-y-3">
+                      {recentPosts.map((post, idx) => {
+                        const postTags = post.analysis_tags
+                          ? (JSON.parse(post.analysis_tags) as string[])
+                          : []
+                        return (
+                          <button
+                            key={post.id}
+                            onClick={() => handleVideoClick(post)}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg bg-[#FDFCFB] hover:bg-[#F7F5F3] transition-colors text-left"
+                          >
+                            <div className="w-20 h-[60px] rounded-md bg-[#F7F5F3] overflow-hidden flex-shrink-0">
+                              {coverCache.get(post.id) ? (
+                                <img
+                                  src={`local://${coverCache.get(post.id)}`}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Play className="h-5 w-5 text-[#B8B2AD]" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium text-[#312E2A] line-clamp-1">
+                                {post.desc || post.caption || '无标题'}
+                              </p>
+                              {postTags.length > 0 && (
+                                <div className="flex gap-1.5 mt-1.5">
+                                  {postTags.slice(0, 2).map((tag, tagIdx) => {
+                                    const color = tagColors[(idx + tagIdx) % tagColors.length]
+                                    return (
+                                      <span
+                                        key={tag}
+                                        className="h-5 px-2 rounded text-xs flex items-center"
+                                        style={{ backgroundColor: color.bg, color: color.text }}
+                                      >
+                                        {tag}
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center">
+                      <Sparkles className="h-10 w-10 text-[#EAE6E1] mx-auto mb-3" />
+                      <p className="text-sm text-[#B8B2AD]">暂无分析数据</p>
+                      <p className="text-xs text-[#B8B2AD] mt-1">开始分析后将在这里显示结果</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Video Preview Modal */}
+      <MediaViewer
+        post={selectedPost}
+        open={viewerOpen}
+        onOpenChange={setViewerOpen}
+        allPosts={allAnalyzedPosts}
+        onSelectPost={setSelectedPost}
+      />
     </div>
   )
 }

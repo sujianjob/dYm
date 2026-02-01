@@ -21,6 +21,30 @@ const ffprobePath = ffprobeInstaller.path.replace('app.asar', 'app.asar.unpacked
 ffmpeg.setFfmpegPath(ffmpegPath)
 ffmpeg.setFfprobePath(ffprobePath)
 
+// FFmpeg 并发限制（避免同时运行太多 ffmpeg 进程）
+const MAX_FFMPEG_CONCURRENCY = 2
+let ffmpegRunning = 0
+const ffmpegQueue: Array<() => void> = []
+
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegRunning < MAX_FFMPEG_CONCURRENCY) {
+    ffmpegRunning++
+    return
+  }
+  return new Promise((resolve) => {
+    ffmpegQueue.push(() => {
+      ffmpegRunning++
+      resolve()
+    })
+  })
+}
+
+function releaseFfmpegSlot(): void {
+  ffmpegRunning--
+  const next = ffmpegQueue.shift()
+  if (next) next()
+}
+
 export interface AnalysisProgress {
   status: 'running' | 'completed' | 'failed' | 'stopped'
   currentPost: string | null
@@ -82,6 +106,29 @@ function getVideoDuration(videoPath: string): Promise<number> {
   })
 }
 
+// 使用 -ss 快速定位提取单帧（比 select 滤镜快很多）
+async function extractSingleFrame(
+  videoPath: string,
+  timestamp: number,
+  outputPath: string
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .inputOptions([
+        '-ss', timestamp.toFixed(2) // 在输入前 seek，利用关键帧快速定位
+      ])
+      .outputOptions([
+        '-frames:v', '1', // 只提取一帧
+        '-q:v', '2', // 最高质量
+        '-y'
+      ])
+      .output(outputPath)
+      .on('end', () => resolve())
+      .on('error', (err) => reject(err))
+      .run()
+  })
+}
+
 async function extractVideoFrames(videoPath: string, sliceCount: number): Promise<string[]> {
   if (!existsSync(videoPath)) {
     throw new Error(`Video file not found: ${videoPath}`)
@@ -92,43 +139,28 @@ async function extractVideoFrames(videoPath: string, sliceCount: number): Promis
 
   console.log(`[Analyzer] Extracting frames from: ${videoPath}`)
 
+  // 获取 ffmpeg 执行槽位
+  await acquireFfmpegSlot()
+
   try {
     const duration = await getVideoDuration(videoPath)
     console.log(`[Analyzer] Video duration: ${duration}s, slices: ${sliceCount}`)
 
     const interval = duration / (sliceCount + 1)
-    const timestamps: number[] = []
-    for (let i = 1; i <= sliceCount; i++) {
-      timestamps.push(interval * i)
-    }
-
-    // 构建 select 滤镜：按时间选择帧，每个时间点允许 0.1 秒误差
-    const selectExpr = timestamps
-      .map((t) => `between(t\\,${t.toFixed(2)}\\,${(t + 0.1).toFixed(2)})`)
-      .join('+')
-
-    const outputPattern = join(tempDir, 'frame_%d.jpg')
-
-    await new Promise<void>((resolve, reject) => {
-      ffmpeg(videoPath)
-        .outputOptions([
-          '-vf', `select='${selectExpr}',scale=640:-1`,
-          '-vsync', 'vfr',
-          '-q:v', '2',
-          '-y'
-        ])
-        .output(outputPattern)
-        .on('end', () => resolve())
-        .on('error', (err) => reject(err))
-        .run()
-    })
-
-    // 收集生成的帧文件
     const frames: string[] = []
+
+    // 串行提取每一帧（使用 -ss 快速定位，比并行更省资源）
     for (let i = 1; i <= sliceCount; i++) {
+      const timestamp = interval * i
       const framePath = join(tempDir, `frame_${i}.jpg`)
-      if (existsSync(framePath)) {
-        frames.push(framePath)
+
+      try {
+        await extractSingleFrame(videoPath, timestamp, framePath)
+        if (existsSync(framePath)) {
+          frames.push(framePath)
+        }
+      } catch (err) {
+        console.warn(`[Analyzer] Failed to extract frame at ${timestamp}s:`, err)
       }
     }
 
@@ -136,11 +168,13 @@ async function extractVideoFrames(videoPath: string, sliceCount: number): Promis
       throw new Error('No frames could be extracted from video')
     }
 
-    console.log(`[Analyzer] Extracted ${frames.length} frames in one pass`)
+    console.log(`[Analyzer] Extracted ${frames.length} frames using seek`)
     return frames
   } catch (error) {
     await rm(tempDir, { recursive: true, force: true }).catch(() => {})
     throw error
+  } finally {
+    releaseFfmpegSlot()
   }
 }
 
@@ -376,16 +410,16 @@ export async function startAnalysis(secUid?: string): Promise<void> {
         throw new Error('已停止')
       }
 
-      const postDesc = post.desc?.substring(0, 20) || post.aweme_id
+      const postTitle = (post.desc || post.caption || '').substring(0, 30) || `${post.nickname || '未知用户'}的视频`
 
       sendProgress({
         status: 'running',
-        currentPost: postDesc,
+        currentPost: postTitle,
         currentIndex: index + 1,
         totalPosts: totalCount,
         analyzedCount,
         failedCount,
-        message: `正在分析: ${postDesc}...`
+        message: postTitle
       })
 
       const result = await analyzePost(post, sliceCount, rateLimiter, apiKey, apiUrl, model, prompt)
@@ -404,7 +438,7 @@ export async function startAnalysis(secUid?: string): Promise<void> {
       if ((analyzedCount + failedCount) % 5 === 0) {
         sendProgress({
           status: 'running',
-          currentPost: posts[index].desc?.substring(0, 20) || posts[index].aweme_id,
+          currentPost: (posts[index].desc || posts[index].caption || '').substring(0, 30) || `${posts[index].nickname || '未知用户'}的视频`,
           currentIndex: index + 1,
           totalPosts: totalCount,
           analyzedCount,

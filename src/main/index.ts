@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog } from 'electron'
+import os from 'os'
 import { join } from 'path'
 import { existsSync, readdirSync, createWriteStream, createReadStream, statSync } from 'fs'
-import { mkdir, stat } from 'fs/promises'
+import { mkdir } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -14,6 +15,7 @@ import {
   getAllSettings,
   createUser,
   getAllUsers,
+  getUserById,
   getUserBySecUid,
   deleteUser,
   setUserShowInHome,
@@ -27,6 +29,7 @@ import {
   deleteTask,
   getAllPosts,
   getAllTags,
+  type DbTask,
   type CreateTaskInput,
   type UpdateUserSettingsInput,
   type PostFilters
@@ -43,6 +46,9 @@ import {
 } from './services/douyin'
 import { startDownloadTask, stopDownloadTask, isTaskRunning } from './services/downloader'
 import { startAnalysis, stopAnalysis, isAnalysisRunning } from './services/analyzer'
+import { initUpdater, registerUpdaterHandlers } from './services/updater'
+import { startUserSync, stopUserSync, isUserSyncing, getAnyUserSyncing } from './services/syncer'
+import { initScheduler, stopScheduler, scheduleUser, unscheduleUser, scheduleTask, unscheduleTask, validateCronExpression } from './services/scheduler'
 import {
   getUnanalyzedPostsCount,
   getUnanalyzedPostsCountByUser,
@@ -150,7 +156,7 @@ function findCoverFile(secUid: string, folderName: string): string | null {
   return null
 }
 
-function createWindow(): void {
+function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -180,6 +186,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // 注册自定义协议用于加载本地文件
@@ -194,6 +202,9 @@ app.whenReady().then(() => {
   // 注册 local:// 协议处理器（支持 Range 请求以允许视频进度条拖动）
   protocol.handle('local', async (request) => {
     const filePath = decodeURIComponent(request.url.replace('local://', ''))
+    console.log('[local://] Request URL:', request.url)
+    console.log('[local://] File path:', filePath)
+    console.log('[local://] File exists:', existsSync(filePath))
 
     try {
       const fileStat = statSync(filePath)
@@ -267,6 +278,12 @@ app.whenReady().then(() => {
 
   // 初始化抖音客户端
   initDouyinHandler()
+
+  // 初始化同步调度器
+  initScheduler()
+
+  // 注册更新 IPC handlers
+  registerUpdaterHandlers()
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
@@ -470,8 +487,19 @@ app.whenReady().then(() => {
   ipcMain.handle('task:create', (_event, input: CreateTaskInput) => createTask(input))
   ipcMain.handle(
     'task:update',
-    (_event, id: number, input: Partial<{ name: string; status: string; concurrency: number }>) =>
-      updateTask(id, input as Parameters<typeof updateTask>[1])
+    (
+      _event,
+      id: number,
+      input: Partial<{ name: string; status: string; concurrency: number; auto_sync: boolean; sync_cron: string }>
+    ) => {
+      const dbInput: Parameters<typeof updateTask>[1] = {}
+      if (input.name !== undefined) dbInput.name = input.name
+      if (input.status !== undefined) dbInput.status = input.status as DbTask['status']
+      if (input.concurrency !== undefined) dbInput.concurrency = input.concurrency
+      if (input.auto_sync !== undefined) dbInput.auto_sync = input.auto_sync ? 1 : 0
+      if (input.sync_cron !== undefined) dbInput.sync_cron = input.sync_cron
+      return updateTask(id, dbInput)
+    }
   )
   ipcMain.handle('task:updateUsers', (_event, taskId: number, userIds: number[]) =>
     updateTaskUsers(taskId, userIds)
@@ -526,6 +554,35 @@ app.whenReady().then(() => {
   ipcMain.handle('download:stop', (_event, taskId: number) => stopDownloadTask(taskId))
   ipcMain.handle('download:isRunning', (_event, taskId: number) => isTaskRunning(taskId))
 
+  // Sync IPC handlers
+  ipcMain.handle('sync:start', (_event, userId: number) => startUserSync(userId))
+  ipcMain.handle('sync:stop', (_event, userId: number) => stopUserSync(userId))
+  ipcMain.handle('sync:isRunning', (_event, userId: number) => isUserSyncing(userId))
+  ipcMain.handle('sync:getAnySyncing', () => getAnyUserSyncing())
+  ipcMain.handle('sync:validateCron', (_event, expression: string) => validateCronExpression(expression))
+  ipcMain.handle('sync:updateUserSchedule', (_event, userId: number) => {
+    const user = getUserById(userId)
+    if (user) {
+      if (user.auto_sync && user.sync_cron) {
+        scheduleUser(user)
+      } else {
+        unscheduleUser(userId)
+      }
+    }
+  })
+
+  // Task schedule update
+  ipcMain.handle('task:updateSchedule', (_event, taskId: number) => {
+    const task = getTaskById(taskId)
+    if (task) {
+      if (task.auto_sync && task.sync_cron) {
+        scheduleTask(task)
+      } else {
+        unscheduleTask(taskId)
+      }
+    }
+  })
+
   // Grok API verification
   ipcMain.handle('grok:verify', async (_event, apiKey: string, apiUrl: string) => {
     const response = await fetch(`${apiUrl}/chat/completions`, {
@@ -560,9 +617,17 @@ app.whenReady().then(() => {
 
   // Video IPC handlers
   ipcMain.handle('video:getDetail', async (_event, url: string) => {
-    const detail = await fetchVideoDetail(url)
+    const detail = await fetchVideoDetail(url) as {
+      awemeId?: string
+      awemeType?: number
+      desc?: string
+      nickname?: string
+      cover?: string
+      animatedCover?: string
+      videoPlayAddr?: string[]
+      images?: string[]
+    }
 
-    // PostDetailFilter 是一个有 getter 方法的类
     const isImages = detail.awemeType === 68
     const coverUrl = detail.cover || detail.animatedCover || ''
 
@@ -628,12 +693,71 @@ app.whenReady().then(() => {
     shell.openPath(folderPath)
   })
 
-  createWindow()
+  // System resource IPC handlers
+  let lastCpuInfo = os.cpus()
+
+  ipcMain.handle('system:getResourceUsage', () => {
+    // Calculate CPU usage
+    const currentCpuInfo = os.cpus()
+
+    let totalIdle = 0
+    let totalTick = 0
+
+    for (let i = 0; i < currentCpuInfo.length; i++) {
+      const cpu = currentCpuInfo[i]
+      const lastCpu = lastCpuInfo[i]
+
+      const idleDiff = cpu.times.idle - lastCpu.times.idle
+      const totalDiff =
+        cpu.times.user -
+        lastCpu.times.user +
+        cpu.times.nice -
+        lastCpu.times.nice +
+        cpu.times.sys -
+        lastCpu.times.sys +
+        cpu.times.idle -
+        lastCpu.times.idle +
+        cpu.times.irq -
+        lastCpu.times.irq
+
+      totalIdle += idleDiff
+      totalTick += totalDiff
+    }
+
+    lastCpuInfo = currentCpuInfo
+
+    const cpuUsage = totalTick > 0 ? Math.round(((totalTick - totalIdle) / totalTick) * 100) : 0
+
+    // Calculate memory usage
+    const totalMem = os.totalmem()
+    const freeMem = os.freemem()
+    const usedMem = totalMem - freeMem
+    const memoryUsage = Math.round((usedMem / totalMem) * 100)
+
+    return {
+      cpuUsage: Math.min(100, Math.max(0, cpuUsage)),
+      memoryUsage,
+      memoryUsed: Math.round((usedMem / 1024 / 1024 / 1024) * 10) / 10,
+      memoryTotal: Math.round((totalMem / 1024 / 1024 / 1024) * 10) / 10
+    }
+  })
+
+  const mainWindow = createWindow()
+
+  // 初始化自动更新（仅在生产环境）
+  if (!is.dev) {
+    initUpdater(mainWindow)
+  }
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      const win = createWindow()
+      if (!is.dev) {
+        initUpdater(win)
+      }
+    }
   })
 })
 
@@ -641,6 +765,7 @@ app.whenReady().then(() => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+  stopScheduler()
   closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()

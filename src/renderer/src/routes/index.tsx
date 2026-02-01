@@ -1,6 +1,6 @@
 import { createHashRouter, Navigate } from 'react-router-dom'
+import { AppLayout } from '@/components/AppLayout'
 import HomePage from '@/pages/HomePage'
-import SettingsLayout from '@/pages/settings/SettingsLayout'
 import UsersPage from '@/pages/settings/UsersPage'
 import DownloadPage from '@/pages/settings/DownloadPage'
 import TaskDetailPage from '@/pages/settings/TaskDetailPage'
@@ -10,15 +10,11 @@ import SystemPage from '@/pages/settings/SystemPage'
 export const router = createHashRouter([
   {
     path: '/',
-    element: <HomePage />
-  },
-  {
-    path: '/settings',
-    element: <SettingsLayout />,
+    element: <AppLayout />,
     children: [
       {
         index: true,
-        element: <Navigate to="/settings/users" replace />
+        element: <HomePage />
       },
       {
         path: 'users',
@@ -37,9 +33,13 @@ export const router = createHashRouter([
         element: <AnalysisPage />
       },
       {
-        path: 'system',
+        path: 'settings',
         element: <SystemPage />
       }
     ]
+  },
+  {
+    path: '/settings/*',
+    element: <Navigate to="/" replace />
   }
 ])

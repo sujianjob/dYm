@@ -6,40 +6,29 @@ import {
   Trash2,
   Loader2,
   User,
-  ExternalLink,
-  Clipboard,
-  CheckCircle2,
   RotateCcw,
-  Search,
   ChevronLeft,
   ChevronRight,
   Pencil,
   Settings2,
   Download,
-  ArrowUpDown
+  X,
+  Play,
+  Square,
+  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-  DialogTrigger
+  DialogTitle
 } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -55,26 +44,27 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false)
   const [refreshingId, setRefreshingId] = useState<number | null>(null)
   const [batchRefreshing, setBatchRefreshing] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [sortBy, setSortBy] = useState<SortOption>('default')
-  const [clipboardStatus, setClipboardStatus] = useState<{
+  const [sortBy] = useState<SortOption>('default')
+  const [, setClipboardStatus] = useState<{
     detected: boolean
     type: 'user' | 'video' | 'unknown' | null
     url: string
   }>({ detected: false, type: null, url: '' })
 
-  // 编辑相关状态
   const [editingUser, setEditingUser] = useState<DbUser | null>(null)
   const [editForm, setEditForm] = useState({
     remark: '',
     max_download_count: 0,
-    show_in_home: true
+    show_in_home: true,
+    auto_sync: false,
+    sync_cron: ''
   })
   const [editLoading, setEditLoading] = useState(false)
+  const [cronValid, setCronValid] = useState(true)
 
-  // 批量编辑相关状态
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [batchEditOpen, setBatchEditOpen] = useState(false)
   const [batchForm, setBatchForm] = useState({
@@ -83,11 +73,26 @@ export default function UsersPage() {
   })
   const [batchLoading, setBatchLoading] = useState(false)
 
+  const [syncingUserId, setSyncingUserId] = useState<number | null>(null)
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
+
   useEffect(() => {
     loadUsers()
+    // 检查是否有用户正在同步
+    window.api.sync.getAnySyncing().then(setSyncingUserId)
   }, [])
 
-  // 搜索过滤和排序
+  useEffect(() => {
+    const unsubscribe = window.api.sync.onProgress((progress) => {
+      setSyncProgress(progress)
+      if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'stopped') {
+        setSyncingUserId(null)
+        loadUsers()
+      }
+    })
+    return unsubscribe
+  }, [])
+
   const filteredUsers = useMemo(() => {
     let result = users
     if (searchTerm.trim()) {
@@ -99,7 +104,6 @@ export default function UsersPage() {
           u.short_id?.toLowerCase().includes(term)
       )
     }
-    // 排序
     if (sortBy === 'undownloaded') {
       result = [...result].sort((a, b) => {
         const aUndownloaded = a.aweme_count - a.downloaded_count
@@ -112,19 +116,16 @@ export default function UsersPage() {
     return result
   }, [users, searchTerm, sortBy])
 
-  // 分页
   const totalPages = Math.ceil(filteredUsers.length / pageSize)
   const paginatedUsers = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return filteredUsers.slice(start, start + pageSize)
   }, [filteredUsers, currentPage, pageSize])
 
-  // 搜索词、分页大小或排序变化时重置页码
   useEffect(() => {
     setCurrentPage(1)
   }, [searchTerm, pageSize, sortBy])
 
-  // 检测剪贴板中的抖音链接
   const checkClipboard = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText()
@@ -259,19 +260,33 @@ export default function UsersPage() {
     setEditForm({
       remark: user.remark || '',
       max_download_count: user.max_download_count || 0,
-      show_in_home: !!user.show_in_home
+      show_in_home: !!user.show_in_home,
+      auto_sync: !!user.auto_sync,
+      sync_cron: user.sync_cron || ''
     })
+    setCronValid(true)
   }
 
   const handleSaveEdit = async () => {
     if (!editingUser) return
+    if (editForm.auto_sync && editForm.sync_cron) {
+      const valid = await window.api.sync.validateCron(editForm.sync_cron)
+      if (!valid) {
+        setCronValid(false)
+        toast.error('Cron 表达式无效')
+        return
+      }
+    }
     setEditLoading(true)
     try {
       await window.api.user.updateSettings(editingUser.id, {
         remark: editForm.remark,
         max_download_count: editForm.max_download_count,
-        show_in_home: editForm.show_in_home
+        show_in_home: editForm.show_in_home,
+        auto_sync: editForm.auto_sync,
+        sync_cron: editForm.sync_cron
       })
+      await window.api.sync.updateUserSchedule(editingUser.id)
       toast.success('保存成功')
       setEditingUser(null)
       loadUsers()
@@ -329,20 +344,26 @@ export default function UsersPage() {
     }
   }
 
-  const handleCreateDownloadTask = async (user: DbUser) => {
+  const handleStartSync = async (user: DbUser) => {
+    if (syncingUserId !== null) {
+      toast.error('已有用户正在同步中')
+      return
+    }
     try {
-      const task = await window.api.task.create({
-        name: `下载 ${user.nickname}`,
-        user_ids: [user.id]
-      })
-      toast.success(`已创建任务: ${task.name}`, {
-        action: {
-          label: '开始下载',
-          onClick: () => window.api.download.start(task.id)
-        }
-      })
+      setSyncingUserId(user.id)
+      await window.api.sync.start(user.id)
+    } catch (error) {
+      setSyncingUserId(null)
+      toast.error(error instanceof Error ? error.message : '同步失败')
+    }
+  }
+
+  const handleStopSync = async (userId: number) => {
+    try {
+      await window.api.sync.stop(userId)
+      toast.info('正在停止同步...')
     } catch {
-      toast.error('创建任务失败')
+      toast.error('停止同步失败')
     }
   }
 
@@ -372,355 +393,255 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">用户管理</h2>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            添加抖音用户主页链接，解析并管理用户数据
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {selectedIds.size > 0 && (
-            <>
-              <Button variant="outline" onClick={handleBatchCreateDownloadTask}>
-                <Download className="h-4 w-4 mr-2" />
-                批量下载 ({selectedIds.size})
-              </Button>
-              <Button variant="outline" onClick={handleOpenBatchEdit}>
-                <Settings2 className="h-4 w-4 mr-2" />
-                批量编辑 ({selectedIds.size})
-              </Button>
-            </>
-          )}
-          <Button
-            variant="outline"
-            onClick={handleBatchRefresh}
-            disabled={batchRefreshing || users.length === 0}
-          >
-            {batchRefreshing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RotateCcw className="h-4 w-4 mr-2" />
-            )}
-            批量刷新
-          </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                添加用户
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[480px]">
-              <DialogHeader className="space-y-3">
-                <DialogTitle className="text-xl">添加抖音用户</DialogTitle>
-                <DialogDescription className="text-muted-foreground">
-                  支持用户主页链接或作品链接，系统将自动识别并获取用户信息
-                </DialogDescription>
-              </DialogHeader>
-              <div className="py-5 space-y-4">
-                {clipboardStatus.detected && (
-                  <div className="flex items-center gap-3 p-3 bg-muted/50 border rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex items-center justify-center h-10 w-10 rounded-full bg-background">
-                      <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">
-                        已从剪贴板检测到
-                        {clipboardStatus.type === 'user' && '用户链接'}
-                        {clipboardStatus.type === 'video' && '作品链接'}
-                        {clipboardStatus.type === 'unknown' && '抖音链接'}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {clipboardStatus.url}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="relative group">
-                  <Input
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    placeholder="粘贴用户主页或作品链接..."
-                    disabled={loading}
-                    className="pr-12 h-12 text-base"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-muted rounded-lg transition-colors group"
-                    onClick={async () => {
-                      const text = await navigator.clipboard.readText()
-                      setUrl(text)
-                      checkClipboard()
-                    }}
-                    disabled={loading}
-                    title="从剪贴板粘贴"
-                  >
-                    <Clipboard className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                  </button>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">支持链接格式：</p>
-                  <p className="text-xs text-muted-foreground/80">
-                    • 用户主页：https://www.douyin.com/user/xxx
-                  </p>
-                  <p className="text-xs text-muted-foreground/80">
-                    • 短链接：https://v.douyin.com/xxx
-                  </p>
-                  <p className="text-xs text-muted-foreground/80">
-                    • 作品链接：将自动提取作者信息
-                  </p>
-                </div>
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  disabled={loading}
-                  className="flex-1 sm:flex-none"
-                >
-                  取消
-                </Button>
-                <Button
-                  onClick={handleAddUser}
-                  disabled={loading || !url.trim()}
-                  className="flex-1 sm:flex-none"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      获取中...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      添加
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
+        <h1 className="text-xl font-semibold text-[#312E2A]">用户管理</h1>
+        <Button
+          onClick={() => setOpen(true)}
+          className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          添加用户
+        </Button>
+      </header>
 
-      {/* User List Card */}
-      <Card className="overflow-hidden">
-        <CardHeader className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg font-semibold">用户列表</CardTitle>
-              <CardDescription className="mt-1">
-                已添加 <span className="font-medium text-foreground">{users.length}</span> 个用户
-                {searchTerm && (
-                  <span className="ml-2">
-                    ，筛选出{' '}
-                    <span className="font-medium text-foreground">{filteredUsers.length}</span> 个
-                  </span>
-                )}
-              </CardDescription>
+      {/* Content */}
+      <div className="flex-1 overflow-auto p-6 space-y-5">
+        {/* Add User Card */}
+        <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+          <h3 className="text-base font-semibold text-[#312E2A]">添加抖音用户</h3>
+          <p className="text-[13px] text-[#7A7570] mt-1">
+            输入抖音用户主页链接，系统将自动解析用户信息
+          </p>
+          <div className="flex items-center gap-3 mt-4">
+            <Input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://www.douyin.com/user/..."
+              className="flex-1 h-10 border-[#EAE6E1]"
+            />
+            <Button
+              onClick={handleAddUser}
+              disabled={loading || !url.trim()}
+              className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white h-10 px-6"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : '添加用户'}
+            </Button>
+          </div>
+        </div>
+
+        {/* User List Card */}
+        <div className="bg-white rounded-xl border border-[#EAE6E1] overflow-hidden">
+          {/* List Header */}
+          <div className="h-14 flex items-center justify-between px-5 border-b border-[#EAE6E1]">
+            <div className="flex items-center gap-3">
+              <span className="text-base font-semibold text-[#312E2A]">已添加用户</span>
+              <span className="text-[13px] text-[#B8B2AD]">({users.length})</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="搜索用户名或抖音号..."
-                  className="pl-9 w-64"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="h-9 px-3 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  <option value="default">默认排序</option>
-                  <option value="undownloaded">未下载优先</option>
-                  <option value="total">总数优先</option>
-                </select>
-              </div>
-              {users.length > 0 && (
-                <Badge variant="secondary" className="px-3 py-1">
-                  {users.length} 用户
-                </Badge>
+              {selectedIds.size > 0 && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleBatchCreateDownloadTask}
+                    className="border-[#EAE6E1] text-[#312E2A]"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    批量下载 ({selectedIds.size})
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenBatchEdit}
+                    className="border-[#EAE6E1] text-[#312E2A]"
+                  >
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    批量编辑
+                  </Button>
+                </>
               )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBatchRefresh}
+                disabled={batchRefreshing || users.length === 0}
+                className="border-[#EAE6E1] text-[#312E2A]"
+              >
+                {batchRefreshing ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                )}
+                刷新全部
+              </Button>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">
+
+          {/* Table Header */}
+          <div className="h-11 flex items-center px-5 bg-[#F7F5F3] text-[13px] font-medium text-[#7A7570]">
+            <div className="w-10">
+              <Checkbox
+                checked={filteredUsers.length > 0 && selectedIds.size === filteredUsers.length}
+                onCheckedChange={handleSelectAll}
+              />
+            </div>
+            <div className="flex-1">用户</div>
+            <div className="w-28 text-center">粉丝</div>
+            <div className="w-32 text-center">下载进度</div>
+            <div className="w-24 text-center">同步</div>
+            <div className="w-20 text-center">首页</div>
+            <div className="w-36 text-right">操作</div>
+          </div>
+
+          {/* Table Body */}
+          {paginatedUsers.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-[#7A7570]">
+              <div className="h-16 w-16 rounded-full bg-[#F7F5F3] flex items-center justify-center mb-4">
+                <User className="h-8 w-8 text-[#B8B2AD]" />
+              </div>
+              <p className="text-base font-medium">暂无用户</p>
+              <p className="text-sm mt-1 text-[#B8B2AD]">点击上方添加用户按钮开始</p>
+            </div>
+          ) : (
+            paginatedUsers.map((user) => (
+              <div
+                key={user.id}
+                className="h-[72px] flex items-center px-5 border-b border-[#EAE6E1] hover:bg-[#F7F5F3]/50 transition-colors group"
+              >
+                <div className="w-10">
                   <Checkbox
-                    checked={filteredUsers.length > 0 && selectedIds.size === filteredUsers.length}
-                    onCheckedChange={handleSelectAll}
+                    checked={selectedIds.has(user.id)}
+                    onCheckedChange={() => handleToggleSelect(user.id)}
                   />
-                </TableHead>
-                <TableHead className="w-[260px] font-semibold">用户</TableHead>
-                <TableHead className="font-semibold">抖音号</TableHead>
-                <TableHead className="text-center font-semibold">粉丝</TableHead>
-                <TableHead className="text-center w-[100px] font-semibold">下载限制</TableHead>
-                <TableHead className="text-center w-[140px] font-semibold">下载进度</TableHead>
-                <TableHead className="text-center w-[80px] font-semibold">首页</TableHead>
-                <TableHead className="text-right w-[140px] font-semibold">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedUsers.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={8} className="h-48 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                        <User className="h-8 w-8 opacity-40" />
-                      </div>
-                      <p className="text-base font-medium">
-                        {searchTerm ? '未找到匹配的用户' : '暂无用户'}
-                      </p>
-                      <p className="text-sm mt-1 opacity-70">
-                        {searchTerm ? '尝试其他搜索关键词' : '点击上方"添加用户"按钮开始'}
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedUsers.map((user) => (
-                  <TableRow key={user.id} className="group transition-colors">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedIds.has(user.id)}
-                        onCheckedChange={() => handleToggleSelect(user.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="py-3">
-                      <div className="flex items-center gap-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={user.avatar} className="object-cover" />
-                          <AvatarFallback>
-                            {user.nickname?.charAt(0).toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 space-y-1">
-                          <p className="font-semibold truncate text-foreground">{user.nickname}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[160px]">
-                            {user.remark || user.signature || '暂无签名'}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground font-mono">
-                        @{user.unique_id || user.short_id || '-'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="font-semibold">
-                        {formatNumber(user.follower_count)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-sm text-muted-foreground">
-                        {user.max_download_count > 0 ? user.max_download_count : '全局'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-sm font-medium">
-                          {user.downloaded_count} / {user.aweme_count}
-                        </span>
-                        <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-foreground rounded-full transition-all"
-                            style={{
-                              width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={!!user.show_in_home}
-                        onCheckedChange={() => handleToggleShowInHome(user)}
-                        title={user.show_in_home ? '点击隐藏' : '点击显示'}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => handleCreateDownloadTask(user)}
-                          title="创建下载任务"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => handleOpenEdit(user)}
-                          title="编辑"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => window.open(user.homepage_url, '_blank')}
-                          title="打开主页"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9"
-                          onClick={() => handleRefresh(user)}
-                          disabled={refreshingId === user.id}
-                          title="刷新信息"
-                        >
-                          <RefreshCw
-                            className={`h-4 w-4 ${refreshingId === user.id ? 'animate-spin' : ''}`}
-                          />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(user.id)}
-                          title="删除用户"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                </div>
+                <div className="flex-1 flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user.avatar} className="object-cover" />
+                    <AvatarFallback className="bg-[#FEE2E8] text-[#FE2C55]">
+                      {user.nickname?.charAt(0).toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-medium text-[#312E2A] truncate">{user.nickname}</p>
+                    <p className="text-xs text-[#B8B2AD] truncate">
+                      @{user.unique_id || user.short_id || '-'}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-28 text-center">
+                  <Badge
+                    variant="outline"
+                    className="font-medium border-[#EAE6E1] text-[#7A7570]"
+                  >
+                    {formatNumber(user.follower_count)}
+                  </Badge>
+                </div>
+                <div className="w-32 flex flex-col items-center gap-1">
+                  <span className="text-sm font-medium text-[#312E2A]">
+                    {user.downloaded_count} / {user.aweme_count}
+                  </span>
+                  <div className="w-20 h-1.5 bg-[#EAE6E1] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#FE2C55] rounded-full transition-all"
+                      style={{
+                        width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="w-24 flex flex-col items-center gap-1">
+                  {syncingUserId === user.id && syncProgress ? (
+                    <span className="text-xs text-[#FE2C55]">
+                      {syncProgress.downloadedCount}/{syncProgress.totalVideos || '?'}
+                    </span>
+                  ) : user.auto_sync ? (
+                    <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                      <Clock className="h-3 w-3 mr-1" />
+                      自动
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-[#B8B2AD]">手动</span>
+                  )}
+                </div>
+                <div className="w-20 flex justify-center">
+                  <Switch
+                    checked={!!user.show_in_home}
+                    onCheckedChange={() => handleToggleShowInHome(user)}
+                  />
+                </div>
+                <div className="w-36 flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                  {syncingUserId === user.id ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[#FE2C55] hover:text-[#FE2C55]"
+                      onClick={() => handleStopSync(user.id)}
+                      title="停止同步"
+                    >
+                      <Square className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-[#7A7570] hover:text-green-600"
+                      onClick={() => handleStartSync(user)}
+                      disabled={syncingUserId !== null}
+                      title="开始同步"
+                    >
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                    onClick={() => handleOpenEdit(user)}
+                    title="编辑"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                    onClick={() => handleRefresh(user)}
+                    disabled={refreshingId === user.id}
+                    title="刷新信息"
+                  >
+                    <RefreshCw
+                      className={`h-4 w-4 ${refreshingId === user.id ? 'animate-spin' : ''}`}
+                    />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-[#7A7570] hover:text-[#FE2C55]"
+                    onClick={() => handleDelete(user.id)}
+                    title="删除用户"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
 
           {/* Pagination */}
           {filteredUsers.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="h-14 flex items-center justify-between px-5 border-t border-[#EAE6E1]">
               <div className="flex items-center gap-4">
-                <p className="text-sm text-muted-foreground">
-                  第 {currentPage} / {totalPages || 1} 页，共 {filteredUsers.length} 条
-                </p>
+                <span className="text-sm text-[#7A7570]">
+                  第 {currentPage} / {totalPages || 1} 页
+                </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">每页</span>
+                  <span className="text-sm text-[#7A7570]">每页</span>
                   <select
                     value={pageSize}
                     onChange={(e) => setPageSize(Number(e.target.value))}
-                    className="h-8 px-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="h-8 px-2 text-sm border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
                   >
                     {PAGE_SIZE_OPTIONS.map((size) => (
                       <option key={size} value={size}>
@@ -728,7 +649,7 @@ export default function UsersPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-muted-foreground">条</span>
+                  <span className="text-sm text-[#7A7570]">条</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -737,6 +658,7 @@ export default function UsersPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
+                  className="border-[#EAE6E1]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   上一页
@@ -746,6 +668,7 @@ export default function UsersPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages || totalPages === 0}
+                  className="border-[#EAE6E1]"
                 >
                   下一页
                   <ChevronRight className="h-4 w-4" />
@@ -753,17 +676,100 @@ export default function UsersPage() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* 编辑用户对话框 */}
+      {/* Add User Modal */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden">
+          <div className="h-[60px] flex items-center justify-between px-6 border-b border-[#EAE6E1]">
+            <h2 className="text-lg font-semibold text-[#312E2A]">添加抖音用户</h2>
+            <button
+              onClick={() => setOpen(false)}
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F7F5F3] transition-colors"
+            >
+              <X className="h-5 w-5 text-[#B8B2AD]" />
+            </button>
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#312E2A]">用户主页链接</Label>
+              <Input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://www.douyin.com/user/..."
+                disabled={loading}
+                className="h-11 border-[#EAE6E1]"
+              />
+            </div>
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-[#312E2A]">下载内容类型</Label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#FE2C55] bg-[#FEE2E8]/30 cursor-pointer">
+                  <input type="radio" name="type" value="all" defaultChecked className="sr-only" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#FE2C55] flex items-center justify-center">
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#FE2C55]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#312E2A]">作品</p>
+                    <p className="text-xs text-[#7A7570]">下载用户发布的所有作品</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#EAE6E1] cursor-pointer hover:bg-[#F7F5F3] transition-colors">
+                  <input type="radio" name="type" value="video" className="sr-only" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#EAE6E1]" />
+                  <div>
+                    <p className="font-medium text-[#312E2A]">视频</p>
+                    <p className="text-xs text-[#7A7570]">仅下载用户发布的视频作品(不含图文)</p>
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#EAE6E1] cursor-pointer hover:bg-[#F7F5F3] transition-colors">
+                  <input type="radio" name="type" value="liked" className="sr-only" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#EAE6E1]" />
+                  <div>
+                    <p className="font-medium text-[#312E2A]">喜欢</p>
+                    <p className="text-xs text-[#7A7570]">下载用户点赞的所有公开作品</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+          <div className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#EAE6E1]">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+              className="h-10 px-5 border-[#EAE6E1]"
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleAddUser}
+              disabled={loading || !url.trim()}
+              className="h-10 px-5 bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  获取中...
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  添加用户
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>编辑用户</DialogTitle>
-            <DialogDescription>
-              修改 {editingUser?.nickname} 的设置
-            </DialogDescription>
+            <DialogDescription>修改 {editingUser?.nickname} 的设置</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -785,9 +791,7 @@ export default function UsersPage() {
                 }
                 placeholder="0 表示使用全局设置"
               />
-              <p className="text-xs text-muted-foreground">
-                设为 0 则使用系统全局设置，否则使用此数值
-              </p>
+              <p className="text-xs text-muted-foreground">设为 0 则使用系统全局设置</p>
             </div>
             <div className="flex items-center justify-between">
               <Label>在首页显示</Label>
@@ -795,6 +799,39 @@ export default function UsersPage() {
                 checked={editForm.show_in_home}
                 onCheckedChange={(checked) => setEditForm((f) => ({ ...f, show_in_home: checked }))}
               />
+            </div>
+            <div className="border-t border-[#EAE6E1] pt-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>自动同步</Label>
+                  <p className="text-xs text-muted-foreground">按计划自动下载新作品</p>
+                </div>
+                <Switch
+                  checked={editForm.auto_sync}
+                  onCheckedChange={(checked) => setEditForm((f) => ({ ...f, auto_sync: checked }))}
+                />
+              </div>
+              {editForm.auto_sync && (
+                <div className="space-y-2">
+                  <Label>同步计划 (Cron 表达式)</Label>
+                  <Input
+                    value={editForm.sync_cron}
+                    onChange={(e) => {
+                      setEditForm((f) => ({ ...f, sync_cron: e.target.value }))
+                      setCronValid(true)
+                    }}
+                    placeholder="0 8 * * *"
+                    className={!cronValid ? 'border-red-500' : ''}
+                  />
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>常用示例:</p>
+                    <p className="font-mono">0 8 * * * - 每天 8:00</p>
+                    <p className="font-mono">0 */6 * * * - 每 6 小时</p>
+                    <p className="font-mono">0 8 * * 1 - 每周一 8:00</p>
+                  </div>
+                  {!cronValid && <p className="text-xs text-red-500">Cron 表达式无效</p>}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -809,14 +846,12 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 批量编辑对话框 */}
+      {/* Batch Edit Dialog */}
       <Dialog open={batchEditOpen} onOpenChange={setBatchEditOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>批量编辑</DialogTitle>
-            <DialogDescription>
-              批量修改 {selectedIds.size} 个用户的设置
-            </DialogDescription>
+            <DialogDescription>批量修改 {selectedIds.size} 个用户的设置</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -826,13 +861,13 @@ export default function UsersPage() {
                 min={0}
                 value={batchForm.max_download_count}
                 onChange={(e) =>
-                  setBatchForm((f) => ({ ...f, max_download_count: parseInt(e.target.value) || 0 }))
+                  setBatchForm((f) => ({
+                    ...f,
+                    max_download_count: parseInt(e.target.value) || 0
+                  }))
                 }
                 placeholder="0 表示使用全局设置"
               />
-              <p className="text-xs text-muted-foreground">
-                设为 0 则使用系统全局设置，否则使用此数值
-              </p>
             </div>
             <div className="flex items-center justify-between">
               <Label>在首页显示</Label>

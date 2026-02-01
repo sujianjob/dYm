@@ -62,6 +62,10 @@ declare global {
     show_in_home: number
     max_download_count: number
     remark: string
+    auto_sync: number
+    sync_cron: string
+    last_sync_at: number | null
+    sync_status: 'idle' | 'syncing' | 'error'
     created_at: number
     updated_at: number
   }
@@ -70,6 +74,8 @@ declare global {
     show_in_home?: boolean
     max_download_count?: number
     remark?: string
+    auto_sync?: boolean
+    sync_cron?: string
   }
 
   interface BatchRefreshResult {
@@ -101,6 +107,9 @@ declare global {
     concurrency: number
     total_videos: number
     downloaded_videos: number
+    auto_sync: number
+    sync_cron: string
+    last_sync_at: number | null
     created_at: number
     updated_at: number
   }
@@ -109,12 +118,29 @@ declare global {
     users: DbUser[]
   }
 
+  interface CreateTaskInput {
+    name: string
+    user_ids: number[]
+    concurrency?: number
+    auto_sync?: boolean
+    sync_cron?: string
+  }
+
+  interface UpdateTaskInput {
+    name?: string
+    status?: string
+    concurrency?: number
+    auto_sync?: boolean
+    sync_cron?: string
+  }
+
   interface TaskAPI {
     getAll: () => Promise<DbTaskWithUsers[]>
     getById: (id: number) => Promise<DbTaskWithUsers | undefined>
-    create: (input: { name: string; user_ids: number[]; concurrency?: number }) => Promise<DbTaskWithUsers>
-    update: (id: number, input: { name?: string; status?: string; concurrency?: number }) => Promise<DbTaskWithUsers | undefined>
+    create: (input: CreateTaskInput) => Promise<DbTaskWithUsers>
+    update: (id: number, input: UpdateTaskInput) => Promise<DbTaskWithUsers | undefined>
     updateUsers: (taskId: number, userIds: number[]) => Promise<DbTaskWithUsers | undefined>
+    updateSchedule: (taskId: number) => Promise<void>
     delete: (id: number) => Promise<void>
   }
 
@@ -135,6 +161,27 @@ declare global {
     stop: (taskId: number) => Promise<void>
     isRunning: (taskId: number) => Promise<boolean>
     onProgress: (callback: (progress: DownloadProgress) => void) => () => void
+  }
+
+  interface SyncProgress {
+    userId: number
+    status: 'syncing' | 'completed' | 'failed' | 'stopped'
+    nickname: string
+    currentVideo: number
+    totalVideos: number
+    downloadedCount: number
+    skippedCount: number
+    message: string
+  }
+
+  interface SyncAPI {
+    start: (userId: number) => Promise<void>
+    stop: (userId: number) => Promise<void>
+    isRunning: (userId: number) => Promise<boolean>
+    getAnySyncing: () => Promise<number | null>
+    validateCron: (expression: string) => Promise<boolean>
+    updateUserSchedule: (userId: number) => Promise<void>
+    onProgress: (callback: (progress: SyncProgress) => void) => () => void
   }
 
   interface DbPost {
@@ -249,6 +296,38 @@ declare global {
     downloadToFolder: (info: VideoInfo) => Promise<void>
   }
 
+  interface SystemResourceInfo {
+    cpuUsage: number // 0-100
+    memoryUsage: number // 0-100
+    memoryUsed: number // GB
+    memoryTotal: number // GB
+  }
+
+  interface SystemAPI {
+    getResourceUsage: () => Promise<SystemResourceInfo>
+  }
+
+  interface UpdateInfo {
+    version: string
+    releaseDate?: string
+    releaseNotes?: string
+  }
+
+  interface UpdateStatus {
+    status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+    info?: UpdateInfo
+    progress?: number
+    error?: string
+  }
+
+  interface UpdaterAPI {
+    check: () => Promise<UpdateInfo | undefined>
+    download: () => Promise<void>
+    install: () => void
+    getCurrentVersion: () => Promise<string>
+    onStatus: (callback: (status: UpdateStatus) => void) => () => void
+  }
+
   interface API {
     db: DatabaseAPI
     settings: SettingsAPI
@@ -257,10 +336,13 @@ declare global {
     user: UserAPI
     task: TaskAPI
     download: DownloadAPI
+    sync: SyncAPI
     post: PostAPI
     grok: GrokAPI
     analysis: AnalysisAPI
     video: VideoAPI
+    system: SystemAPI
+    updater: UpdaterAPI
   }
 
   interface Window {

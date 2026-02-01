@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Settings, Video, Play, Images, X, Filter, Tag, Flame, FolderOpen, Download } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Video, Play, Images, X, Tag, Flame, FolderOpen, Search, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
@@ -16,7 +14,6 @@ import { MediaViewer } from '@/components/MediaViewer'
 import { VideoDownloadDialog } from '@/components/VideoDownloadDialog'
 
 const IMAGE_AWEME_TYPE = 68
-
 const PAGE_SIZE = 50
 
 export default function HomePage() {
@@ -36,16 +33,26 @@ export default function HomePage() {
   const [sexyLevelRange, setSexyLevelRange] = useState<[number, number]>([0, 10])
   const [showFilters, setShowFilters] = useState(false)
   const [analyzedOnly, setAnalyzedOnly] = useState(false)
+  const [showAllTags, setShowAllTags] = useState(false)
+  const [tagSearch, setTagSearch] = useState('')
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false)
+  const [searchKeyword, setSearchKeyword] = useState('')
+  const [showAuthorDropdown, setShowAuthorDropdown] = useState(false)
+  const [authorSearch, setAuthorSearch] = useState('')
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const authorDropdownRef = useRef<HTMLDivElement>(null)
+  const authorSearchInputRef = useRef<HTMLInputElement>(null)
 
-  const filters = useMemo<PostFilters>(() => ({
-    secUid: selectedSecUid || undefined,
-    tags: selectedTags.length > 0 ? selectedTags : undefined,
-    minContentLevel: sexyLevelRange[0] > 0 ? sexyLevelRange[0] : undefined,
-    maxContentLevel: sexyLevelRange[1] < 10 ? sexyLevelRange[1] : undefined,
-    analyzedOnly: analyzedOnly || undefined
-  }), [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly])
+  const filters = useMemo<PostFilters>(
+    () => ({
+      secUid: selectedSecUid || undefined,
+      tags: selectedTags.length > 0 ? selectedTags : undefined,
+      minContentLevel: sexyLevelRange[0] > 0 ? sexyLevelRange[0] : undefined,
+      maxContentLevel: sexyLevelRange[1] < 10 ? sexyLevelRange[1] : undefined,
+      analyzedOnly: analyzedOnly || undefined
+    }),
+    [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly]
+  )
 
   useEffect(() => {
     setPosts([])
@@ -64,7 +71,6 @@ export default function HomePage() {
     }
   }, [posts])
 
-  // Infinite scroll observer
   useEffect(() => {
     const sentinel = sentinelRef.current
     if (!sentinel) return
@@ -147,7 +153,12 @@ export default function HomePage() {
     setAnalyzedOnly(false)
   }
 
-  const hasActiveFilters = selectedSecUid || selectedTags.length > 0 || sexyLevelRange[0] > 0 || sexyLevelRange[1] < 10 || analyzedOnly
+  const hasActiveFilters =
+    selectedSecUid ||
+    selectedTags.length > 0 ||
+    sexyLevelRange[0] > 0 ||
+    sexyLevelRange[1] < 10 ||
+    analyzedOnly
 
   const parseTags = (tagsStr: string | null): string[] => {
     if (!tagsStr) return []
@@ -161,7 +172,6 @@ export default function HomePage() {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return ''
-    // 格式: 20240101 或 2024-01-01T00:00:00
     const cleaned = dateStr.replace(/[-:T]/g, '').substring(0, 8)
     if (cleaned.length === 8) {
       return `${cleaned.substring(0, 4)}-${cleaned.substring(4, 6)}-${cleaned.substring(6, 8)}`
@@ -182,83 +192,180 @@ export default function HomePage() {
 
   const isImagePost = (post: DbPost) => post.aweme_type === IMAGE_AWEME_TYPE
 
+  const selectedAuthor = authors.find((a) => a.sec_uid === selectedSecUid)
+
+  const filteredAuthors = (() => {
+    if (!authorSearch.trim()) return authors
+    const search = authorSearch.toLowerCase()
+    return authors.filter((a) => a.nickname.toLowerCase().includes(search))
+  })()
+
+  // Close author dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (authorDropdownRef.current && !authorDropdownRef.current.contains(e.target as Node)) {
+        setShowAuthorDropdown(false)
+      }
+    }
+    if (showAuthorDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showAuthorDropdown])
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-14 border-b border-border flex items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold">dYm</h1>
-          {total > 0 && (
-            <span className="text-sm text-muted-foreground">
-              已加载 {posts.length} / {total} 个作品
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Author Filter */}
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
+        <h1 className="text-xl font-semibold text-[#312E2A]">视频库</h1>
+        <div className="flex items-center gap-4">
+          {/* Search Box */}
           <div className="relative">
-            <select
-              value={selectedSecUid}
-              onChange={(e) => setSelectedSecUid(e.target.value)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring appearance-none pr-8 min-w-[120px]"
-            >
-              <option value="">全部作者</option>
-              {authors.map((author) => (
-                <option key={author.sec_uid} value={author.sec_uid}>
-                  {author.nickname}
-                </option>
-              ))}
-            </select>
-            {selectedSecUid && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-0 top-0 h-9 w-8"
-                onClick={() => setSelectedSecUid('')}
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B8B2AD]" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="搜索视频..."
+              className="h-10 w-[280px] pl-10 pr-4 rounded-lg border border-[#EAE6E1] bg-white text-sm placeholder:text-[#B8B2AD] focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20 focus:border-[#FE2C55]"
+            />
           </div>
-          <Button
-            variant={showFilters ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            className="gap-1"
-          >
-            <Filter className="h-4 w-4" />
-            筛选
-            {hasActiveFilters && (
-              <span className="ml-1 h-2 w-2 rounded-full bg-primary" />
-            )}
-          </Button>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              清除
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => setDownloadDialogOpen(true)}>
-            <Download className="h-5 w-5" />
-          </Button>
-          <Link to="/settings">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </Link>
         </div>
       </header>
 
-      {/* Filter Panel */}
+      {/* Filter Bar */}
+      <div className="h-[52px] flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
+        <div className="flex items-center gap-3">
+          <span className="text-[13px] text-[#7A7570]">筛选:</span>
+
+          {/* Author Filter */}
+          <div className="relative" ref={authorDropdownRef}>
+            <button
+              onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
+              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#EAE6E1] bg-white text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors"
+            >
+              <span>{selectedAuthor?.nickname || '全部作者'}</span>
+              <ChevronDown className={`h-4 w-4 text-[#7A7570] transition-transform ${showAuthorDropdown ? 'rotate-180' : ''}`} />
+            </button>
+            {selectedSecUid && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedSecUid('')
+                }}
+                className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#FE2C55] text-white"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+            {/* Author Dropdown */}
+            {showAuthorDropdown && (
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-[#EAE6E1] rounded-lg shadow-lg z-50 overflow-hidden">
+                {/* Search */}
+                <div className="p-2 border-b border-[#EAE6E1]">
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#B8B2AD]" />
+                    <input
+                      ref={authorSearchInputRef}
+                      type="text"
+                      defaultValue=""
+                      onInput={(e) => {
+                        const value = (e.target as HTMLInputElement).value
+                        console.log('[DEBUG] input onInput:', value)
+                        setAuthorSearch(value)
+                      }}
+                      placeholder="搜索作者..."
+                      className="w-full h-8 pl-7 pr-2 rounded-md bg-[#F7F5F3] text-sm text-[#312E2A] placeholder:text-[#B8B2AD] focus:outline-none focus:ring-1 focus:ring-[#FE2C55]"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                {/* Options */}
+                <div key={`author-list-${authorSearch}`} className="max-h-60 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedSecUid('')
+                      setShowAuthorDropdown(false)
+                      setAuthorSearch('')
+                      if (authorSearchInputRef.current) {
+                        authorSearchInputRef.current.value = ''
+                      }
+                    }}
+                    className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F7F5F3] transition-colors ${!selectedSecUid ? 'bg-[#FEE2E8] text-[#FE2C55]' : 'text-[#312E2A]'}`}
+                  >
+                    全部作者
+                  </button>
+                  {filteredAuthors.map((author) => (
+                    <button
+                      key={author.sec_uid}
+                      onClick={() => {
+                        setSelectedSecUid(author.sec_uid)
+                        setShowAuthorDropdown(false)
+                        setAuthorSearch('')
+                        if (authorSearchInputRef.current) {
+                          authorSearchInputRef.current.value = ''
+                        }
+                      }}
+                      className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F7F5F3] transition-colors ${selectedSecUid === author.sec_uid ? 'bg-[#FEE2E8] text-[#FE2C55]' : 'text-[#312E2A]'}`}
+                    >
+                      <span className="truncate">{author.nickname}</span>
+                    </button>
+                  ))}
+                  {filteredAuthors.length === 0 && (
+                    <div className="py-4 text-center text-sm text-[#B8B2AD]">
+                      未找到匹配作者
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tag Filter */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#EAE6E1] bg-white text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors"
+            >
+              <Tag className="h-4 w-4 text-[#7A7570]" />
+              <span>标签筛选</span>
+              <ChevronDown className="h-4 w-4 text-[#7A7570]" />
+            </button>
+            {selectedTags.length > 0 && (
+              <span className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#FE2C55] text-white text-xs">
+                {selectedTags.length}
+              </span>
+            )}
+          </div>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="text-[#7A7570] hover:text-[#312E2A]"
+            >
+              清除筛选
+            </Button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] text-[#B8B2AD]">共 {total.toLocaleString()} 个视频</span>
+        </div>
+      </div>
+
+      {/* Extended Filter Panel */}
       {showFilters && (
-        <div className="border-b border-border px-6 py-4 space-y-4 bg-muted/30">
+        <div className="px-6 py-4 border-b border-[#EAE6E1] bg-white space-y-4">
           {/* Sexy Level Filter */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 min-w-[100px]">
               <Flame className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-medium">内容分级</span>
+              <span className="text-sm font-medium text-[#312E2A]">内容分级</span>
             </div>
             <div className="flex-1 max-w-md flex items-center gap-4">
-              <span className="text-sm text-muted-foreground w-6">{sexyLevelRange[0]}</span>
+              <span className="text-sm text-[#7A7570] w-6">{sexyLevelRange[0]}</span>
               <Slider
                 value={sexyLevelRange}
                 onValueChange={(v) => setSexyLevelRange(v as [number, number])}
@@ -267,76 +374,125 @@ export default function HomePage() {
                 step={1}
                 className="flex-1"
               />
-              <span className="text-sm text-muted-foreground w-6">{sexyLevelRange[1]}</span>
+              <span className="text-sm text-[#7A7570] w-6">{sexyLevelRange[1]}</span>
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex items-center gap-2 text-sm text-[#7A7570]">
               <input
                 type="checkbox"
                 checked={analyzedOnly}
                 onChange={(e) => setAnalyzedOnly(e.target.checked)}
-                className="rounded border-input"
+                className="rounded border-[#EAE6E1]"
               />
               仅显示已分析
             </label>
           </div>
+
           {/* Tag Filter */}
           {allTags.length > 0 && (
             <div className="flex items-start gap-4">
               <div className="flex items-center gap-2 min-w-[100px] pt-1">
                 <Tag className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">标签筛选</span>
+                <span className="text-sm font-medium text-[#312E2A]">标签筛选</span>
               </div>
-              <div className="flex-1 flex flex-wrap gap-2">
-                {allTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                    className="cursor-pointer hover:bg-primary/80 transition-colors"
-                    onClick={() => toggleTag(tag)}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
+              <div className="flex-1">
+                {/* 搜索框 + 展开/收起按钮 */}
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="relative flex-1 max-w-[200px]">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#B8B2AD]" />
+                    <input
+                      type="text"
+                      value={tagSearch}
+                      onChange={(e) => setTagSearch(e.target.value)}
+                      placeholder="搜索标签..."
+                      className="w-full h-7 pl-7 pr-2 rounded-md bg-[#F7F5F3] text-xs text-[#312E2A] placeholder:text-[#B8B2AD] focus:outline-none focus:ring-1 focus:ring-[#FE2C55]"
+                    />
+                  </div>
+                  {allTags.length > 20 && !tagSearch && (
+                    <button
+                      onClick={() => setShowAllTags(!showAllTags)}
+                      className="flex items-center gap-1 text-xs text-[#7A7570] hover:text-[#FE2C55] transition-colors"
+                    >
+                      {showAllTags ? (
+                        <>
+                          <ChevronUp className="h-3 w-3" />
+                          收起
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3" />
+                          展开 ({allTags.length})
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {selectedTags.length > 0 && (
+                    <button
+                      onClick={() => setSelectedTags([])}
+                      className="flex items-center gap-1 text-xs text-[#FE2C55] hover:text-[#E91E45] transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                      清除 ({selectedTags.length})
+                    </button>
+                  )}
+                </div>
+                {/* 标签列表（可滚动） */}
+                <div className={`flex flex-wrap gap-2 ${showAllTags || tagSearch ? 'max-h-32 overflow-y-auto' : ''}`}>
+                  {(() => {
+                    let displayTags = allTags
+                    if (tagSearch) {
+                      const search = tagSearch.toLowerCase()
+                      displayTags = allTags.filter((t) => t.toLowerCase().includes(search))
+                    } else if (!showAllTags) {
+                      displayTags = allTags.slice(0, 20)
+                    }
+                    return displayTags.length > 0 ? (
+                      displayTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                          className="cursor-pointer hover:bg-[#FE2C55]/80 transition-colors"
+                          onClick={() => toggleTag(tag)}
+                        >
+                          {tag}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-[#B8B2AD]">未找到匹配标签</span>
+                    )
+                  })()}
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Main Content */}
-      <ScrollArea className="flex-1">
-        <main className="p-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+      {/* Main Content - Video Grid */}
+      <div className="flex-1 overflow-auto p-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE2C55]" />
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="rounded-full bg-[#F7F5F3] p-6 mb-4">
+              <Video className="h-12 w-12 text-[#B8B2AD]" />
             </div>
-          ) : posts.length === 0 ? (
-            /* Empty State */
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="rounded-full bg-muted p-6 mb-4">
-                <Video className="h-12 w-12 text-muted-foreground" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">暂无视频</h2>
-              <p className="text-muted-foreground mb-4">前往设置添加用户并下载视频</p>
-              <Link to="/settings">
-                <Button>
-                  <Settings className="h-4 w-4 mr-2" />
-                  进入设置
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <>
-              {/* Video Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <h2 className="text-xl font-semibold text-[#312E2A] mb-2">暂无视频</h2>
+            <p className="text-[#7A7570] mb-4">添加用户并下载视频后，将在这里显示</p>
+          </div>
+        ) : (
+          <>
+            {/* 4-Column Masonry Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {posts.map((post) => (
                 <ContextMenu key={post.id}>
                   <ContextMenuTrigger asChild>
                     <Card
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group"
+                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all group border-[#EAE6E1] bg-white"
                       onClick={() => handlePostClick(post)}
                     >
-                      <div className="aspect-[9/16] bg-muted relative">
+                      <div className="aspect-[9/16] bg-[#F7F5F3] relative">
                         {getCoverUrl(post) ? (
                           <img
                             src={getCoverUrl(post)!}
@@ -346,9 +502,9 @@ export default function HomePage() {
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             {isImagePost(post) ? (
-                              <Images className="h-12 w-12 text-muted-foreground/50" />
+                              <Images className="h-12 w-12 text-[#B8B2AD]" />
                             ) : (
-                              <Video className="h-12 w-12 text-muted-foreground/50" />
+                              <Video className="h-12 w-12 text-[#B8B2AD]" />
                             )}
                           </div>
                         )}
@@ -372,28 +528,42 @@ export default function HomePage() {
                         )}
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-medium line-clamp-2">{post.desc || post.caption || '无标题'}</p>
-                        <p className="text-xs text-muted-foreground mt-1">@{post.nickname}</p>
+                        <p className="text-sm font-medium text-[#312E2A] line-clamp-2">
+                          {post.desc || post.caption || '无标题'}
+                        </p>
+                        <p className="text-xs text-[#7A7570] mt-1">@{post.nickname}</p>
                         {post.analysis_tags && (
                           <div className="flex flex-wrap gap-1 mt-2">
-                            {parseTags(post.analysis_tags).slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
-                                {tag}
-                              </Badge>
-                            ))}
+                            {parseTags(post.analysis_tags)
+                              .slice(0, 3)
+                              .map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="text-xs px-1.5 py-0 bg-[#F7F5F3] text-[#7A7570]"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
                             {parseTags(post.analysis_tags).length > 3 && (
-                              <Badge variant="outline" className="text-xs px-1.5 py-0">
+                              <Badge
+                                variant="outline"
+                                className="text-xs px-1.5 py-0 border-[#EAE6E1] text-[#B8B2AD]"
+                              >
                                 +{parseTags(post.analysis_tags).length - 3}
                               </Badge>
                             )}
                           </div>
                         )}
-                        {post.analysis_content_level !== null && post.analysis_content_level > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5">
-                            <Flame className="h-3 w-3 text-orange-500" />
-                            <span className="text-xs text-orange-500">{post.analysis_content_level}</span>
-                          </div>
-                        )}
+                        {post.analysis_content_level !== null &&
+                          post.analysis_content_level > 0 && (
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <Flame className="h-3 w-3 text-orange-500" />
+                              <span className="text-xs text-orange-500">
+                                {post.analysis_content_level}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     </Card>
                   </ContextMenuTrigger>
@@ -408,30 +578,29 @@ export default function HomePage() {
                 </ContextMenu>
               ))}
             </div>
+
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
               {loadingMore && (
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-foreground" />
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FE2C55]" />
               )}
               {!hasMore && posts.length > 0 && (
-                <span className="text-sm text-muted-foreground">已加载全部 {total} 个作品</span>
+                <span className="text-sm text-[#B8B2AD]">已加载全部 {total} 个作品</span>
               )}
             </div>
-            </>
-          )}
-        </main>
-      </ScrollArea>
+          </>
+        )}
+      </div>
 
       <MediaViewer
         post={selectedPost}
         open={viewerOpen}
         onOpenChange={setViewerOpen}
+        allPosts={posts}
+        onSelectPost={setSelectedPost}
       />
 
-      <VideoDownloadDialog
-        open={downloadDialogOpen}
-        onOpenChange={setDownloadDialogOpen}
-      />
+      <VideoDownloadDialog open={downloadDialogOpen} onOpenChange={setDownloadDialogOpen} />
     </div>
   )
 }

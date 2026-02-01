@@ -54,14 +54,12 @@ const userAPI = {
 const taskAPI = {
   getAll: (): Promise<DbTaskWithUsers[]> => ipcRenderer.invoke('task:getAll'),
   getById: (id: number): Promise<DbTaskWithUsers | undefined> => ipcRenderer.invoke('task:getById', id),
-  create: (input: { name: string; user_ids: number[]; concurrency?: number }): Promise<DbTaskWithUsers> =>
-    ipcRenderer.invoke('task:create', input),
-  update: (
-    id: number,
-    input: { name?: string; status?: string; concurrency?: number }
-  ): Promise<DbTaskWithUsers | undefined> => ipcRenderer.invoke('task:update', id, input),
+  create: (input: CreateTaskInput): Promise<DbTaskWithUsers> => ipcRenderer.invoke('task:create', input),
+  update: (id: number, input: UpdateTaskInput): Promise<DbTaskWithUsers | undefined> =>
+    ipcRenderer.invoke('task:update', id, input),
   updateUsers: (taskId: number, userIds: number[]): Promise<DbTaskWithUsers | undefined> =>
     ipcRenderer.invoke('task:updateUsers', taskId, userIds),
+  updateSchedule: (taskId: number): Promise<void> => ipcRenderer.invoke('task:updateSchedule', taskId),
   delete: (id: number): Promise<void> => ipcRenderer.invoke('task:delete', id)
 }
 
@@ -73,6 +71,20 @@ const downloadAPI = {
     const handler = (_event: Electron.IpcRendererEvent, progress: DownloadProgress): void => callback(progress)
     ipcRenderer.on('download:progress', handler)
     return () => ipcRenderer.removeListener('download:progress', handler)
+  }
+}
+
+const syncAPI = {
+  start: (userId: number): Promise<void> => ipcRenderer.invoke('sync:start', userId),
+  stop: (userId: number): Promise<void> => ipcRenderer.invoke('sync:stop', userId),
+  isRunning: (userId: number): Promise<boolean> => ipcRenderer.invoke('sync:isRunning', userId),
+  getAnySyncing: (): Promise<number | null> => ipcRenderer.invoke('sync:getAnySyncing'),
+  validateCron: (expression: string): Promise<boolean> => ipcRenderer.invoke('sync:validateCron', expression),
+  updateUserSchedule: (userId: number): Promise<void> => ipcRenderer.invoke('sync:updateUserSchedule', userId),
+  onProgress: (callback: (progress: SyncProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: SyncProgress): void => callback(progress)
+    ipcRenderer.on('sync:progress', handler)
+    return () => ipcRenderer.removeListener('sync:progress', handler)
   }
 }
 
@@ -116,6 +128,25 @@ const videoAPI = {
   downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info)
 }
 
+const systemAPI = {
+  getResourceUsage: (): Promise<SystemResourceInfo> => ipcRenderer.invoke('system:getResourceUsage')
+}
+
+const updaterAPI = {
+  check: (): Promise<UpdateInfo | undefined> => ipcRenderer.invoke('updater:check'),
+  download: (): Promise<void> => ipcRenderer.invoke('updater:download'),
+  install: (): void => {
+    ipcRenderer.invoke('updater:install')
+  },
+  getCurrentVersion: (): Promise<string> => ipcRenderer.invoke('updater:getCurrentVersion'),
+  onStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, status: UpdateStatus): void =>
+      callback(status)
+    ipcRenderer.on('updater:status', handler)
+    return () => ipcRenderer.removeListener('updater:status', handler)
+  }
+}
+
 const api = {
   db: dbAPI,
   settings: settingsAPI,
@@ -124,10 +155,13 @@ const api = {
   user: userAPI,
   task: taskAPI,
   download: downloadAPI,
+  sync: syncAPI,
   post: postAPI,
   grok: grokAPI,
   analysis: analysisAPI,
-  video: videoAPI
+  video: videoAPI,
+  system: systemAPI,
+  updater: updaterAPI
 }
 
 if (process.contextIsolated) {

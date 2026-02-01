@@ -123,6 +123,45 @@ export function initDatabase(): void {
     // 列已存在，忽略错误
   }
 
+  // 迁移：为 users 表添加同步相关字段
+  try {
+    database.exec(`ALTER TABLE users ADD COLUMN auto_sync INTEGER DEFAULT 0`)
+  } catch {
+    // 列已存在
+  }
+  try {
+    database.exec(`ALTER TABLE users ADD COLUMN sync_cron TEXT DEFAULT ''`)
+  } catch {
+    // 列已存在
+  }
+  try {
+    database.exec(`ALTER TABLE users ADD COLUMN last_sync_at INTEGER`)
+  } catch {
+    // 列已存在
+  }
+  try {
+    database.exec(`ALTER TABLE users ADD COLUMN sync_status TEXT DEFAULT 'idle'`)
+  } catch {
+    // 列已存在
+  }
+
+  // 迁移：为 download_tasks 表添加定时同步相关字段
+  try {
+    database.exec(`ALTER TABLE download_tasks ADD COLUMN auto_sync INTEGER DEFAULT 0`)
+  } catch {
+    // 列已存在
+  }
+  try {
+    database.exec(`ALTER TABLE download_tasks ADD COLUMN sync_cron TEXT DEFAULT ''`)
+  } catch {
+    // 列已存在
+  }
+  try {
+    database.exec(`ALTER TABLE download_tasks ADD COLUMN last_sync_at INTEGER`)
+  } catch {
+    // 列已存在
+  }
+
   // 任务-用户关联表
   database.exec(`
     CREATE TABLE IF NOT EXISTS task_users (
@@ -195,6 +234,10 @@ export function initDatabase(): void {
   for (const setting of defaultSettings) {
     insertStmt.run(setting.key, setting.value)
   }
+
+  // 清理旧的下载任务数据（已迁移到用户同步系统）
+  database.exec('DELETE FROM task_users')
+  database.exec('DELETE FROM download_tasks')
 }
 
 export function getSetting(key: string): string | null {
@@ -253,6 +296,11 @@ export interface DbUser {
   show_in_home: number
   max_download_count: number
   remark: string
+  // 同步相关字段
+  auto_sync: number
+  sync_cron: string
+  last_sync_at: number | null
+  sync_status: 'idle' | 'syncing' | 'error'
   created_at: number
   updated_at: number
 }
@@ -352,6 +400,8 @@ export interface UpdateUserSettingsInput {
   show_in_home?: boolean
   max_download_count?: number
   remark?: string
+  auto_sync?: boolean
+  sync_cron?: string
 }
 
 export function updateUserSettings(id: number, input: UpdateUserSettingsInput): DbUser | undefined {
@@ -371,6 +421,14 @@ export function updateUserSettings(id: number, input: UpdateUserSettingsInput): 
     fields.push('remark = ?')
     values.push(input.remark)
   }
+  if (input.auto_sync !== undefined) {
+    fields.push('auto_sync = ?')
+    values.push(input.auto_sync ? 1 : 0)
+  }
+  if (input.sync_cron !== undefined) {
+    fields.push('sync_cron = ?')
+    values.push(input.sync_cron)
+  }
 
   if (fields.length === 0) return getUserById(id)
 
@@ -379,6 +437,26 @@ export function updateUserSettings(id: number, input: UpdateUserSettingsInput): 
 
   database.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...values)
   return getUserById(id)
+}
+
+export function updateUserSyncStatus(id: number, status: 'idle' | 'syncing' | 'error', lastSyncAt?: number): void {
+  const database = getDatabase()
+  if (lastSyncAt !== undefined) {
+    database.prepare('UPDATE users SET sync_status = ?, last_sync_at = ?, updated_at = strftime(\'%s\', \'now\') WHERE id = ?').run(status, lastSyncAt, id)
+  } else {
+    database.prepare('UPDATE users SET sync_status = ?, updated_at = strftime(\'%s\', \'now\') WHERE id = ?').run(status, id)
+  }
+}
+
+export function getAutoSyncUsers(): DbUser[] {
+  const database = getDatabase()
+  return database.prepare(`
+    SELECT u.*, COALESCE(p.cnt, 0) as downloaded_count
+    FROM users u
+    LEFT JOIN (SELECT user_id, COUNT(*) as cnt FROM posts GROUP BY user_id) p ON u.id = p.user_id
+    WHERE u.auto_sync = 1
+    ORDER BY u.created_at DESC
+  `).all() as DbUser[]
 }
 
 export function batchUpdateUserSettings(ids: number[], input: Omit<UpdateUserSettingsInput, 'remark'>): void {
@@ -411,6 +489,9 @@ export interface DbTask {
   concurrency: number
   total_videos: number
   downloaded_videos: number
+  auto_sync: number
+  sync_cron: string
+  last_sync_at: number | null
   created_at: number
   updated_at: number
 }
@@ -423,14 +504,21 @@ export interface CreateTaskInput {
   name: string
   user_ids: number[]
   concurrency?: number
+  auto_sync?: boolean
+  sync_cron?: string
 }
 
 export function createTask(input: CreateTaskInput): DbTaskWithUsers {
   const database = getDatabase()
   const stmt = database.prepare(`
-    INSERT INTO download_tasks (name, concurrency) VALUES (?, ?)
+    INSERT INTO download_tasks (name, concurrency, auto_sync, sync_cron) VALUES (?, ?, ?, ?)
   `)
-  const result = stmt.run(input.name, input.concurrency ?? 3)
+  const result = stmt.run(
+    input.name,
+    input.concurrency ?? 3,
+    input.auto_sync ? 1 : 0,
+    input.sync_cron ?? ''
+  )
   const taskId = result.lastInsertRowid as number
 
   const insertUserStmt = database.prepare(`
@@ -514,6 +602,40 @@ export function updateTaskUsers(taskId: number, userIds: number[]): DbTaskWithUs
 export function deleteTask(id: number): void {
   const database = getDatabase()
   database.prepare('DELETE FROM download_tasks WHERE id = ?').run(id)
+}
+
+export function clearAllTasks(): void {
+  const database = getDatabase()
+  database.exec('DELETE FROM task_users')
+  database.exec('DELETE FROM download_tasks')
+}
+
+export function getAutoSyncTasks(): DbTaskWithUsers[] {
+  const database = getDatabase()
+  const tasks = database
+    .prepare("SELECT * FROM download_tasks WHERE auto_sync = 1 AND sync_cron != ''")
+    .all() as DbTask[]
+
+  return tasks.map((task) => {
+    const users = database
+      .prepare(
+        `
+      SELECT u.* FROM users u
+      INNER JOIN task_users tu ON u.id = tu.user_id
+      WHERE tu.task_id = ?
+    `
+      )
+      .all(task.id) as DbUser[]
+    return { ...task, users }
+  })
+}
+
+export function updateTaskLastSyncAt(id: number): void {
+  const database = getDatabase()
+  const now = Math.floor(Date.now() / 1000)
+  database
+    .prepare('UPDATE download_tasks SET last_sync_at = ?, updated_at = ? WHERE id = ?')
+    .run(now, now, id)
 }
 
 // Post CRUD

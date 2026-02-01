@@ -1,19 +1,20 @@
-import { useState, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, X, Images, Video, Volume2, VolumeX } from 'lucide-react'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download } from 'lucide-react'
 
 interface MediaViewerProps {
   post: DbPost | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  allPosts?: DbPost[]
+  onSelectPost?: (post: DbPost) => void
 }
 
-export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
+export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectPost }: MediaViewerProps) {
   const [media, setMedia] = useState<MediaFiles | null>(null)
   const [loading, setLoading] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [recommendCovers, setRecommendCovers] = useState<Map<number, string>>(new Map())
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -22,7 +23,6 @@ export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
     } else {
       setMedia(null)
       setCurrentIndex(0)
-      // 关闭时停止音乐
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current.currentTime = 0
@@ -30,24 +30,103 @@ export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
     }
   }, [open, post])
 
-  // 当有音乐且是图集时自动播放
   useEffect(() => {
     if (media?.music && media.type === 'images' && audioRef.current) {
-      audioRef.current.play().catch(() => {
-        // 自动播放被阻止，忽略错误
-      })
+      audioRef.current.play().catch(() => {})
     }
   }, [media])
+
+  // 相关推荐算法：多样化推荐（同标签优先，但保证作者多样性）
+  const recommendations = useMemo(() => {
+    if (!post || allPosts.length === 0) return []
+
+    const currentTags = post.analysis_tags ? JSON.parse(post.analysis_tags) as string[] : []
+    const currentSecUid = post.sec_uid
+    const result: DbPost[] = []
+    const usedIds = new Set<number>([post.id])
+
+    // 候选池：排除当前视频
+    const candidates = allPosts.filter((p) => p.id !== post.id)
+
+    // 第一优先：同标签的其他作者视频
+    if (currentTags.length > 0) {
+      const sameTagOtherAuthor = candidates
+        .filter((p) => {
+          if (p.sec_uid === currentSecUid) return false
+          const tags = p.analysis_tags ? JSON.parse(p.analysis_tags) as string[] : []
+          return tags.some((t) => currentTags.includes(t))
+        })
+        .slice(0, 2)
+
+      for (const p of sameTagOtherAuthor) {
+        if (result.length < 3 && !usedIds.has(p.id)) {
+          result.push(p)
+          usedIds.add(p.id)
+        }
+      }
+    }
+
+    // 第二优先：同作者的其他视频（最多1个）
+    const sameAuthor = candidates.find((p) => p.sec_uid === currentSecUid && !usedIds.has(p.id))
+    if (sameAuthor && result.length < 3) {
+      result.push(sameAuthor)
+      usedIds.add(sameAuthor.id)
+    }
+
+    // 第三优先：随机补充其他作者的视频
+    const otherAuthors = candidates.filter((p) => p.sec_uid !== currentSecUid && !usedIds.has(p.id))
+    for (const p of otherAuthors) {
+      if (result.length >= 3) break
+      result.push(p)
+      usedIds.add(p.id)
+    }
+
+    // 如果还不够，补充同作者的
+    if (result.length < 3) {
+      const remaining = candidates.filter((p) => !usedIds.has(p.id))
+      for (const p of remaining) {
+        if (result.length >= 3) break
+        result.push(p)
+      }
+    }
+
+    return result
+  }, [post, allPosts])
+
+  // 加载推荐视频的封面
+  useEffect(() => {
+    const loadCovers = async () => {
+      const covers = new Map<number, string>()
+      for (const rec of recommendations) {
+        try {
+          // 总是调用 getCoverPath 获取实际封面路径
+          const coverPath = await window.api.post.getCoverPath(rec.sec_uid, rec.folder_name)
+          console.log('Cover path for', rec.id, ':', coverPath)
+          if (coverPath) {
+            covers.set(rec.id, coverPath)
+          }
+        } catch (error) {
+          console.error('Failed to load cover for', rec.id, error)
+        }
+      }
+      setRecommendCovers(covers)
+    }
+    if (recommendations.length > 0) {
+      loadCovers()
+    }
+  }, [recommendations])
 
   const loadMedia = async () => {
     if (!post) return
     setLoading(true)
     try {
+      console.log('Loading media for:', { sec_uid: post.sec_uid, folder_name: post.folder_name, aweme_type: post.aweme_type })
       const result = await window.api.post.getMediaFiles(
         post.sec_uid,
         post.folder_name,
         post.aweme_type
       )
+      console.log('Media result:', result)
       setMedia(result)
     } catch (error) {
       console.error('Failed to load media:', error)
@@ -76,54 +155,37 @@ export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
     if (e.key === 'Escape') onOpenChange(false)
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-4xl w-[90vw] h-[85vh] p-0 gap-0 overflow-hidden"
-        showCloseButton={false}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b">
-          <div className="flex items-center gap-2">
-            {isImages ? (
-              <Images className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Video className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="text-sm font-medium truncate max-w-[300px]">
-              {post?.desc || post?.caption || '无标题'}
-            </span>
-            {isImages && hasMultipleImages && (
-              <span className="text-xs text-muted-foreground">
-                {currentIndex + 1} / {images.length}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            {/* 图集有音乐时显示静音按钮 */}
-            {isImages && media?.music && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setIsMuted(!isMuted)
-                  if (audioRef.current) {
-                    audioRef.current.muted = !isMuted
-                  }
-                }}
-              >
-                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+  const handleDownload = async () => {
+    if (!post) return
+    try {
+      await window.api.post.openFolder(post.sec_uid, post.folder_name)
+    } catch (error) {
+      console.error('Failed to open folder:', error)
+    }
+  }
 
-        {/* Content */}
-        <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+  const handleSelectRecommend = (rec: DbPost) => {
+    if (onSelectPost) {
+      onSelectPost(rec)
+    }
+  }
+
+  // 解析标签
+  const tags = post?.analysis_tags ? JSON.parse(post.analysis_tags) as string[] : []
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => onOpenChange(false)}>
+      <div
+        className="flex bg-white rounded-xl overflow-hidden shadow-2xl"
+        style={{ width: 780, height: 520 }}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+      >
+        {/* 左侧 - 视频/图片区域 */}
+        <div className="relative bg-black flex items-center justify-center" style={{ width: 380 }}>
           {loading ? (
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
           ) : media ? (
@@ -138,40 +200,54 @@ export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
                 )}
                 {hasMultipleImages && (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                    <button
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
                       onClick={handlePrev}
                     >
-                      <ChevronLeft className="h-6 w-6" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white"
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <button
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
                       onClick={handleNext}
                     >
-                      <ChevronRight className="h-6 w-6" />
-                    </Button>
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    {/* 图片指示器 */}
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {images.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={`w-1.5 h-1.5 rounded-full transition-colors ${
+                            idx === currentIndex ? 'bg-white' : 'bg-white/40'
+                          }`}
+                        />
+                      ))}
+                    </div>
                   </>
                 )}
-                {/* 图集背景音乐 */}
                 {media.music && (
-                  <audio
-                    ref={audioRef}
-                    src={`local://${media.music}`}
-                    loop
-                    muted={isMuted}
-                  />
+                  <>
+                    <audio ref={audioRef} src={`local://${media.music}`} loop muted={isMuted} />
+                    <button
+                      className="absolute bottom-4 right-4 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      onClick={() => {
+                        setIsMuted(!isMuted)
+                        if (audioRef.current) {
+                          audioRef.current.muted = !isMuted
+                        }
+                      }}
+                    >
+                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    </button>
+                  </>
                 )}
               </>
             ) : media.video ? (
               <video
                 src={`local://${media.video}`}
+                className="max-w-full max-h-full"
                 controls
                 autoPlay
-                className="max-w-full max-h-full"
               />
             ) : (
               <div className="text-white text-center">
@@ -185,11 +261,111 @@ export function MediaViewer({ post, open, onOpenChange }: MediaViewerProps) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t">
-          <p className="text-xs text-muted-foreground">@{post?.nickname}</p>
+        {/* 右侧 - 内容区域 */}
+        <div className="flex flex-col" style={{ width: 400, padding: 20 }}>
+          {/* 标题行 */}
+          <div className="flex items-start justify-between gap-3">
+            <h3 className="text-base font-medium text-[#312E2A] leading-tight line-clamp-2 flex-1">
+              {post?.desc || post?.caption || '无标题'}
+            </h3>
+            <button
+              onClick={() => onOpenChange(false)}
+              className="w-7 h-7 rounded-full bg-[#F5F5F5] hover:bg-[#EAE6E1] flex items-center justify-center flex-shrink-0 transition-colors"
+            >
+              <X className="h-4 w-4 text-[#7A7570]" />
+            </button>
+          </div>
+
+          {/* 标签行 */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {tags.slice(0, 5).map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#FEE2E8] text-[#FE2C55]"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* 作者行 */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#F7F5F3] flex items-center justify-center overflow-hidden">
+                <span className="text-sm font-medium text-[#7A7570]">
+                  {post?.nickname?.charAt(0) || 'U'}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#312E2A]">@{post?.nickname}</p>
+                <p className="text-xs text-[#B8B2AD]">粉丝 --</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1 text-[#7A7570]">
+                <Heart className="h-4 w-4" />
+                <span className="text-xs">--</span>
+              </div>
+              <div className="flex items-center gap-1 text-[#7A7570]">
+                <MessageCircle className="h-4 w-4" />
+                <span className="text-xs">--</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 分割线 */}
+          <div className="h-px bg-[#EAE6E1] my-4" />
+
+          {/* 下载按钮 */}
+          <button
+            onClick={handleDownload}
+            className="w-full h-11 rounded-lg bg-[#FE2C55] hover:bg-[#E91E45] text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            打开文件夹
+          </button>
+
+          {/* 相关推荐 */}
+          <div className="mt-4 flex-1 overflow-hidden">
+            <h4 className="text-sm font-medium text-[#312E2A] mb-3">相关推荐</h4>
+            <div className="space-y-2.5">
+              {recommendations.length > 0 ? (
+                recommendations.map((rec) => (
+                  <button
+                    key={rec.id}
+                    onClick={() => handleSelectRecommend(rec)}
+                    className="w-full flex items-center gap-3 p-1.5 rounded-lg hover:bg-[#F7F5F3] transition-colors text-left"
+                  >
+                    <div className="w-[70px] h-[70px] rounded-lg bg-[#F5F5F5] overflow-hidden flex-shrink-0">
+                      {recommendCovers.get(rec.id) ? (
+                        <img
+                          src={`local://${recommendCovers.get(rec.id)}`}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Play className="h-5 w-5 text-[#B8B2AD]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#312E2A] line-clamp-2 leading-tight">
+                        {rec.desc || rec.caption || '无标题'}
+                      </p>
+                      <p className="text-xs text-[#B8B2AD] mt-1">@{rec.nickname}</p>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <p className="text-xs text-[#B8B2AD] text-center py-4">暂无相关推荐</p>
+              )}
+            </div>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
