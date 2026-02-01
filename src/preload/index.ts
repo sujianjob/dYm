@@ -132,6 +132,16 @@ const systemAPI = {
   getResourceUsage: (): Promise<SystemResourceInfo> => ipcRenderer.invoke('system:getResourceUsage')
 }
 
+const migrationAPI = {
+  execute: (
+    oldPath: string,
+    newPath: string
+  ): Promise<{ success: number; failed: number; total: number }> =>
+    ipcRenderer.invoke('migration:execute', oldPath, newPath),
+  getCount: (oldPath: string): Promise<number> =>
+    ipcRenderer.invoke('migration:getCount', oldPath)
+}
+
 const updaterAPI = {
   check: (): Promise<UpdateInfo | undefined> => ipcRenderer.invoke('updater:check'),
   download: (): Promise<void> => ipcRenderer.invoke('updater:download'),
@@ -161,7 +171,8 @@ const api = {
   analysis: analysisAPI,
   video: videoAPI,
   system: systemAPI,
-  updater: updaterAPI
+  updater: updaterAPI,
+  migration: migrationAPI
 }
 
 if (process.contextIsolated) {

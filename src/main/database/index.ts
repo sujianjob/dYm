@@ -971,6 +971,31 @@ export function updatePostAnalysis(id: number, result: AnalysisResult): void {
   )
 }
 
+// 获取所有需要迁移的帖子（按旧路径前缀）
+export function getPostsForMigration(oldBasePath: string): DbPost[] {
+  const database = getDatabase()
+  return database
+    .prepare(
+      `SELECT * FROM posts WHERE video_path LIKE ? OR cover_path LIKE ? OR music_path LIKE ?`
+    )
+    .all(`${oldBasePath}%`, `${oldBasePath}%`, `${oldBasePath}%`) as DbPost[]
+}
+
+// 批量更新帖子路径
+export function updatePostPaths(
+  id: number,
+  videoPath: string,
+  coverPath: string,
+  musicPath: string
+): void {
+  const database = getDatabase()
+  database
+    .prepare(
+      `UPDATE posts SET video_path = ?, cover_path = ?, music_path = ? WHERE id = ?`
+    )
+    .run(videoPath, coverPath, musicPath, id)
+}
+
 export function closeDatabase(): void {
   if (db) {
     db.close()

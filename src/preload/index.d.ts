@@ -328,6 +328,17 @@ declare global {
     onStatus: (callback: (status: UpdateStatus) => void) => () => void
   }
 
+  interface MigrationResult {
+    success: number
+    failed: number
+    total: number
+  }
+
+  interface MigrationAPI {
+    execute: (oldPath: string, newPath: string) => Promise<MigrationResult>
+    getCount: (oldPath: string) => Promise<number>
+  }
+
   interface API {
     db: DatabaseAPI
     settings: SettingsAPI
@@ -343,6 +354,7 @@ declare global {
     video: VideoAPI
     system: SystemAPI
     updater: UpdaterAPI
+    migration: MigrationAPI
   }
 
   interface Window {

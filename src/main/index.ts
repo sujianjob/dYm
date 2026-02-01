@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog } from 'electron'
 import os from 'os'
 import { join } from 'path'
-import { existsSync, readdirSync, createWriteStream, createReadStream, statSync } from 'fs'
+import { existsSync, readdirSync, createWriteStream, createReadStream, statSync, cpSync, rmSync } from 'fs'
 import { mkdir } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -53,7 +53,9 @@ import {
   getUnanalyzedPostsCount,
   getUnanalyzedPostsCountByUser,
   getUserAnalysisStats,
-  getTotalAnalysisStats
+  getTotalAnalysisStats,
+  getPostsForMigration,
+  updatePostPaths
 } from './database'
 
 function getDownloadPath(): string {
@@ -740,6 +742,82 @@ app.whenReady().then(() => {
       memoryUsed: Math.round((usedMem / 1024 / 1024 / 1024) * 10) / 10,
       memoryTotal: Math.round((totalMem / 1024 / 1024 / 1024) * 10) / 10
     }
+  })
+
+  // Migration IPC handler
+  ipcMain.handle(
+    'migration:execute',
+    async (
+      _event,
+      oldPath: string,
+      newPath: string
+    ): Promise<{ success: number; failed: number; total: number }> => {
+      const posts = getPostsForMigration(oldPath)
+      const result = { success: 0, failed: 0, total: posts.length }
+
+      if (posts.length === 0) {
+        return result
+      }
+
+      // Ensure new path exists
+      await mkdir(newPath, { recursive: true })
+
+      for (const post of posts) {
+        try {
+          // Calculate new paths
+          const newVideoPath = post.video_path?.replace(oldPath, newPath) || null
+          const newCoverPath = post.cover_path?.replace(oldPath, newPath) || null
+          const newMusicPath = post.music_path?.replace(oldPath, newPath) || null
+
+          // Get source folder (use video_path as reference)
+          const sourcePath = post.video_path || post.cover_path || post.music_path
+          if (!sourcePath) {
+            result.failed++
+            continue
+          }
+
+          const targetPath = sourcePath.replace(oldPath, newPath)
+          const sourceDir = sourcePath
+          const targetDir = targetPath
+
+          // Move folder if source exists
+          if (existsSync(sourceDir)) {
+            const targetParent = join(targetDir, '..')
+            await mkdir(targetParent, { recursive: true })
+
+            try {
+              // Try rename first (fast, same filesystem)
+              const { rename } = await import('fs/promises')
+              await rename(sourceDir, targetDir)
+            } catch {
+              // Fall back to copy + delete (cross-filesystem)
+              cpSync(sourceDir, targetDir, { recursive: true })
+              rmSync(sourceDir, { recursive: true, force: true })
+            }
+          }
+
+          // Update database
+          updatePostPaths(
+            post.id,
+            newVideoPath || '',
+            newCoverPath || '',
+            newMusicPath || ''
+          )
+
+          result.success++
+        } catch (error) {
+          console.error(`[Migration] Failed to migrate post ${post.id}:`, error)
+          result.failed++
+        }
+      }
+
+      return result
+    }
+  )
+
+  // Migration count handler
+  ipcMain.handle('migration:getCount', (_event, oldPath: string) => {
+    return getPostsForMigration(oldPath).length
   })
 
   const mainWindow = createWindow()

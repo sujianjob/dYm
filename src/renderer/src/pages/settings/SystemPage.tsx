@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
-import { ChevronDown, Loader2, Chrome, CheckCircle, Download, RefreshCw } from 'lucide-react'
+import { ChevronDown, Loader2, Chrome, CheckCircle, Download, RefreshCw, FolderSync, X } from 'lucide-react'
 
 export default function SystemPage() {
   // Cookie
@@ -16,6 +16,13 @@ export default function SystemPage() {
   const [downloadPath, setDownloadPath] = useState('')
   const [maxDownloadCount, setMaxDownloadCount] = useState('0')
   const [videoDownloadConcurrency, setVideoDownloadConcurrency] = useState('3')
+  const originalDownloadPath = useRef('')
+
+  // 迁移
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false)
+  const [migrationCount, setMigrationCount] = useState(0)
+  const [pendingNewPath, setPendingNewPath] = useState('')
+  const [migrating, setMigrating] = useState(false)
 
   // 分析
   const [analysisConcurrency, setAnalysisConcurrency] = useState('2')
@@ -65,7 +72,9 @@ export default function SystemPage() {
     setCookie(settings.douyin_cookie || '')
     setApiKey(settings.grok_api_key || '')
     setApiUrl(settings.grok_api_url || 'https://api.x.ai/v1')
-    setDownloadPath(settings.download_path || '')
+    const savedPath = settings.download_path || ''
+    setDownloadPath(savedPath)
+    originalDownloadPath.current = savedPath
     setMaxDownloadCount(settings.max_download_count || '0')
     setVideoDownloadConcurrency(settings.video_download_concurrency || '3')
     setAnalysisConcurrency(settings.analysis_concurrency || '2')
@@ -132,13 +141,58 @@ export default function SystemPage() {
   // Download handlers
   const handleSaveDownload = async () => {
     try {
-      await window.api.settings.set('download_path', downloadPath)
-      await window.api.settings.set('max_download_count', maxDownloadCount)
-      await window.api.settings.set('video_download_concurrency', videoDownloadConcurrency)
-      toast.success('下载设置已保存')
+      const oldPath = originalDownloadPath.current
+      const newPath = downloadPath
+
+      // Check if path changed and old path has files
+      if (oldPath && newPath && oldPath !== newPath) {
+        const count = await window.api.migration.getCount(oldPath)
+        if (count > 0) {
+          setMigrationCount(count)
+          setPendingNewPath(newPath)
+          setShowMigrationDialog(true)
+          return
+        }
+      }
+
+      await saveDownloadSettings()
     } catch {
       toast.error('保存失败')
     }
+  }
+
+  const saveDownloadSettings = async () => {
+    await window.api.settings.set('download_path', downloadPath)
+    await window.api.settings.set('max_download_count', maxDownloadCount)
+    await window.api.settings.set('video_download_concurrency', videoDownloadConcurrency)
+    originalDownloadPath.current = downloadPath
+    toast.success('下载设置已保存')
+  }
+
+  const handleMigrate = async () => {
+    setMigrating(true)
+    try {
+      const oldPath = originalDownloadPath.current
+      const result = await window.api.migration.execute(oldPath, pendingNewPath)
+
+      await saveDownloadSettings()
+      setShowMigrationDialog(false)
+
+      if (result.failed > 0) {
+        toast.warning(`迁移完成: 成功 ${result.success} 个，失败 ${result.failed} 个`)
+      } else {
+        toast.success(`迁移完成: 已迁移 ${result.success} 个文件夹`)
+      }
+    } catch (error) {
+      toast.error(`迁移失败: ${(error as Error).message}`)
+    } finally {
+      setMigrating(false)
+    }
+  }
+
+  const handleSkipMigration = async () => {
+    setShowMigrationDialog(false)
+    await saveDownloadSettings()
   }
 
   // Analysis handlers
@@ -615,6 +669,69 @@ export default function SystemPage() {
 
         </div>
       </div>
+
+      {/* Migration Dialog */}
+      {showMigrationDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl w-[480px] shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#EAE6E1]">
+              <div className="flex items-center gap-3">
+                <FolderSync className="h-5 w-5 text-[#FE2C55]" />
+                <h3 className="text-base font-semibold text-[#312E2A]">检测到下载路径变更</h3>
+              </div>
+              <button
+                onClick={() => setShowMigrationDialog(false)}
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-[#F7F5F3] transition-colors"
+              >
+                <X className="h-4 w-4 text-[#7A7570]" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5">
+              <p className="text-sm text-[#312E2A] mb-4">
+                发现 <span className="font-medium text-[#FE2C55]">{migrationCount}</span> 个视频文件夹在旧路径中。
+              </p>
+              <p className="text-sm text-[#7A7570] mb-4">
+                是否将文件迁移到新路径？迁移后数据库记录将自动更新。
+              </p>
+              <div className="text-xs text-[#B8B2AD] space-y-1 bg-[#F7F5F3] rounded-lg p-3">
+                <p><span className="text-[#7A7570]">旧路径:</span> {originalDownloadPath.current || '默认路径'}</p>
+                <p><span className="text-[#7A7570]">新路径:</span> {pendingNewPath}</p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#EAE6E1]">
+              <button
+                onClick={handleSkipMigration}
+                disabled={migrating}
+                className="h-9 px-4 rounded-lg border border-[#EAE6E1] text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors disabled:opacity-50"
+              >
+                跳过迁移
+              </button>
+              <button
+                onClick={handleMigrate}
+                disabled={migrating}
+                className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {migrating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    迁移中...
+                  </>
+                ) : (
+                  <>
+                    <FolderSync className="h-4 w-4" />
+                    迁移文件
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
