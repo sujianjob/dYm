@@ -62,6 +62,11 @@ function getDownloadPath(): string {
   return join(app.getPath('userData'), 'Download', 'post')
 }
 
+// 将路径转换为 URL 友好格式（Windows 反斜杠转正斜杠）
+function toUrlPath(filePath: string): string {
+  return process.platform === 'win32' ? filePath.replace(/\\/g, '/') : filePath
+}
+
 interface MediaFiles {
   type: 'video' | 'images'
   video?: string
@@ -100,24 +105,24 @@ function findMediaFiles(secUid: string, folderName: string, awemeType: number): 
   try {
     const files = readdirSync(targetFolder)
     const coverFile = files.find((f) => f.includes('_cover.'))
-    const cover = coverFile ? join(targetFolder, coverFile) : undefined
+    const cover = coverFile ? toUrlPath(join(targetFolder, coverFile)) : undefined
 
     // 查找音乐文件
     const musicFile = files.find((f) => /\.(mp3|m4a|aac|wav|ogg)$/i.test(f))
-    const music = musicFile ? join(targetFolder, musicFile) : undefined
+    const music = musicFile ? toUrlPath(join(targetFolder, musicFile)) : undefined
 
     // 图集类型: awemeType === 68
     if (awemeType === 68) {
       const images = files
         .filter((f) => /\.(webp|jpg|jpeg|png)$/i.test(f) && !f.includes('_cover'))
-        .map((f) => join(targetFolder!, f))
+        .map((f) => toUrlPath(join(targetFolder!, f)))
         .sort()
       return { type: 'images', images, cover, music }
     }
 
     // 视频类型（视频自带音轨，不需要额外音乐）
     const videoFile = files.find((f) => /\.(mp4|mov|avi)$/i.test(f))
-    const video = videoFile ? join(targetFolder, videoFile) : undefined
+    const video = videoFile ? toUrlPath(join(targetFolder, videoFile)) : undefined
     return { type: 'video', video, cover }
   } catch {
     return null
@@ -134,7 +139,7 @@ function findCoverFile(secUid: string, folderName: string): string | null {
     try {
       const files = readdirSync(exactPath)
       const coverFile = files.find((f) => f.includes('_cover.'))
-      if (coverFile) return join(exactPath, coverFile)
+      if (coverFile) return toUrlPath(join(exactPath, coverFile))
     } catch {
       return null
     }
@@ -148,7 +153,7 @@ function findCoverFile(secUid: string, folderName: string): string | null {
         const folderPath = join(basePath, folder)
         const files = readdirSync(folderPath)
         const coverFile = files.find((f) => f.includes('_cover.'))
-        if (coverFile) return join(folderPath, coverFile)
+        if (coverFile) return toUrlPath(join(folderPath, coverFile))
       }
     }
   } catch {
@@ -203,7 +208,12 @@ protocol.registerSchemesAsPrivileged([
 app.whenReady().then(() => {
   // 注册 local:// 协议处理器（支持 Range 请求以允许视频进度条拖动）
   protocol.handle('local', async (request) => {
-    const filePath = decodeURIComponent(request.url.replace('local://', ''))
+    // 解码并处理 Windows 路径（URL 中可能是正斜杠，需要在 Windows 上转换回反斜杠）
+    let filePath = decodeURIComponent(request.url.replace('local://', ''))
+    // Windows 路径处理：如果路径以盘符开头（如 /C:/），去掉开头的斜杠
+    if (process.platform === 'win32' && /^\/[A-Za-z]:/.test(filePath)) {
+      filePath = filePath.slice(1)
+    }
     console.log('[local://] Request URL:', request.url)
     console.log('[local://] File path:', filePath)
     console.log('[local://] File exists:', existsSync(filePath))
@@ -259,7 +269,11 @@ app.whenReady().then(() => {
       }
 
       // 无 Range 请求时返回完整文件
-      return net.fetch(`file://${filePath}`)
+      // Windows 需要 file:/// 格式，并将反斜杠转换为正斜杠
+      const fileUrl = process.platform === 'win32'
+        ? `file:///${filePath.replace(/\\/g, '/')}`
+        : `file://${filePath}`
+      return net.fetch(fileUrl)
     } catch {
       return new Response('File not found', { status: 404 })
     }
