@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog, Tray, Menu, nativeImage } from 'electron'
 import os from 'os'
 import { join } from 'path'
 import { existsSync, readdirSync, createWriteStream, createReadStream, statSync, cpSync, rmSync } from 'fs'
@@ -57,6 +57,11 @@ import {
   getPostsForMigration,
   updatePostPaths
 } from './database'
+
+// 全局变量
+let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+let isQuitting = false
 
 function getDownloadPath(): string {
   return join(app.getPath('userData'), 'Download', 'post')
@@ -167,6 +172,50 @@ function findCoverFile(secUid: string, folderName: string): string | null {
   return null
 }
 
+function createTray(): void {
+  // 创建托盘图标
+  const trayIcon = nativeImage.createFromPath(icon)
+  // macOS 需要设置为 template 图标
+  if (process.platform === 'darwin') {
+    trayIcon.setTemplateImage(true)
+  }
+  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }))
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: '显示主窗口',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: '退出',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      }
+    }
+  ])
+
+  tray.setToolTip('dYm - 抖音视频下载器')
+  tray.setContextMenu(contextMenu)
+
+  // 点击托盘图标显示窗口
+  tray.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible()) {
+        mainWindow.focus()
+      } else {
+        mainWindow.show()
+      }
+    }
+  })
+}
+
 function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -183,6 +232,27 @@ function createWindow(): BrowserWindow {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+  })
+
+  // 拦截关闭事件，询问用户是否进入后台
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      const choice = dialog.showMessageBoxSync(mainWindow, {
+        type: 'question',
+        buttons: ['最小化到托盘', '退出程序'],
+        defaultId: 0,
+        cancelId: 0,
+        title: '关闭窗口',
+        message: '您想要最小化到系统托盘还是退出程序？'
+      })
+      if (choice === 1) {
+        isQuitting = true
+        app.quit()
+      } else {
+        mainWindow.hide()
+      }
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -838,7 +908,11 @@ app.whenReady().then(() => {
     return getPostsForMigration(oldPath).length
   })
 
-  const mainWindow = createWindow()
+  // 创建托盘图标
+  createTray()
+
+  // 创建主窗口
+  mainWindow = createWindow()
 
   // 初始化自动更新（仅在生产环境）
   if (!is.dev) {
@@ -848,21 +922,28 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) {
-      const win = createWindow()
+    if (mainWindow) {
+      mainWindow.show()
+    } else {
+      mainWindow = createWindow()
       if (!is.dev) {
-        initUpdater(win)
+        initUpdater(mainWindow)
       }
     }
   })
+})
+
+// 应用退出前清理资源
+app.on('before-quit', () => {
+  isQuitting = true
+  stopScheduler()
+  closeDatabase()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  stopScheduler()
-  closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
   }
