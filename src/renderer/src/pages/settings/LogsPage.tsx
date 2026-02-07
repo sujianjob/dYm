@@ -61,7 +61,9 @@ export default function LogsPage() {
     }
     const c = config[type]
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}
+      >
         {getTypeIcon(type)}
         {c.label}
       </span>
@@ -92,66 +94,72 @@ export default function LogsPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-hidden p-6">
-        <div className="h-full bg-white rounded-2xl border border-[#E5E5E7] shadow-sm flex flex-col overflow-hidden">
-          {/* Filter Tabs */}
-          <div className="h-12 flex items-center gap-2 px-5 border-b border-[#E5E5E7]">
-            {[
-              { key: 'all', label: '全部' },
-              { key: 'user', label: '用户同步' },
-              { key: 'task', label: '任务下载' },
-              { key: 'system', label: '系统' }
-            ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setFilter(item.key as LogFilter)}
-                className={`h-8 px-3 rounded-lg text-sm transition-colors ${
-                  filter === item.key
-                    ? 'bg-[#E8F0FE] text-[#0A84FF] font-medium'
-                    : 'text-[#6E6E73] hover:bg-[#F2F2F4]'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+      <div className="flex-1 overflow-hidden px-6 py-8">
+        <div className="mx-auto max-w-6xl h-full">
+          <div className="h-full bg-white rounded-2xl border border-[#E5E5E7] shadow-sm flex flex-col overflow-hidden">
+            {/* Filter Tabs */}
+            <div className="h-12 flex items-center gap-2 px-5 border-b border-[#E5E5E7]">
+              {[
+                { key: 'all', label: '全部' },
+                { key: 'user', label: '用户同步' },
+                { key: 'task', label: '任务下载' },
+                { key: 'system', label: '系统' }
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => setFilter(item.key as LogFilter)}
+                  className={`h-9 px-4 rounded-full text-sm transition-colors ${
+                    filter === item.key
+                      ? 'bg-[#E8F0FE] text-[#0A84FF] font-medium'
+                      : 'text-[#6E6E73] hover:bg-[#F2F2F4]'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
 
-          {/* Logs List */}
-          <div className="flex-1 overflow-auto">
-            {filteredLogs.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
-                  <Clock className="h-8 w-8 text-[#A1A1A6]" />
+            {/* Logs List */}
+            <div className="flex-1 overflow-auto">
+              {filteredLogs.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center">
+                  <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                    <Clock className="h-8 w-8 text-[#A1A1A6]" />
+                  </div>
+                  <p className="text-base font-medium text-[#1D1D1F]">暂无日志</p>
+                  <p className="text-sm text-[#6E6E73] mt-1">
+                    启用自动同步后，执行日志将显示在这里
+                  </p>
                 </div>
-                <p className="text-base font-medium text-[#1D1D1F]">暂无日志</p>
-                <p className="text-sm text-[#6E6E73] mt-1">启用自动同步后，执行日志将显示在这里</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#E5E5E7]">
-                {filteredLogs.map((log, index) => (
-                  <div
-                    key={`${log.timestamp}-${index}`}
-                    className="flex items-start gap-4 px-5 py-3 hover:bg-[#F2F2F4]/50 transition-colors"
-                  >
-                    <div className="flex-shrink-0 mt-0.5">{getLevelIcon(log.level)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-[#1D1D1F]">{log.message}</span>
-                        {log.targetName && (
-                          <span className="text-xs text-[#6E6E73] bg-[#F2F2F4] px-2 py-0.5 rounded font-medium">
-                            {log.targetName}
+              ) : (
+                <div className="divide-y divide-[#E5E5E7]">
+                  {filteredLogs.map((log, index) => (
+                    <div
+                      key={`${log.timestamp}-${index}`}
+                      className="flex items-start gap-4 px-5 py-3 hover:bg-[#F2F2F4]/50 transition-colors"
+                    >
+                      <div className="flex-shrink-0 mt-0.5">{getLevelIcon(log.level)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-[#1D1D1F]">{log.message}</span>
+                          {log.targetName && (
+                            <span className="text-xs text-[#6E6E73] bg-[#F2F2F4] px-2 py-0.5 rounded font-medium">
+                              {log.targetName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xs text-[#A1A1A6]">
+                            {formatTime(log.timestamp)}
                           </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-[#A1A1A6]">{formatTime(log.timestamp)}</span>
-                        {getTypeBadge(log.type)}
+                          {getTypeBadge(log.type)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

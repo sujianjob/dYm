@@ -50,7 +50,7 @@ export default function SettingsLayout() {
 
         {/* Content - 只有这里滚动 */}
         <ScrollArea className="flex-1 bg-[#F5F5F7]">
-          <main className="p-8 max-w-5xl">
+          <main className="p-8 max-w-6xl w-full mx-auto">
             <Outlet />
           </main>
         </ScrollArea>

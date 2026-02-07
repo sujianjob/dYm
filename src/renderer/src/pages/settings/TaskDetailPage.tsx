@@ -214,196 +214,203 @@ export default function TaskDetailPage() {
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6 space-y-5">
-        {/* Stats Cards */}
-        <div className="grid gap-4 grid-cols-4">
-          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
-                <User className="h-6 w-6 text-[#6E6E73]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#1D1D1F]">{task.users.length}</p>
-                <p className="text-sm text-[#6E6E73]">用户数</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
-                <Video className="h-6 w-6 text-[#6E6E73]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#1D1D1F]">{formatNumber(totalVideos)}</p>
-                <p className="text-sm text-[#6E6E73]">视频总数</p>
+      <div className="flex-1 overflow-auto px-6 py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          {/* Stats Cards */}
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                  <User className="h-6 w-6 text-[#6E6E73]" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#1D1D1F]">{task.users.length}</p>
+                  <p className="text-sm text-[#6E6E73]">用户数</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
-                <FileText className="h-6 w-6 text-[#6E6E73]" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-[#1D1D1F]">
-                  {totalDownloaded} / {totalVideos}
-                </p>
-                <p className="text-sm text-[#6E6E73]">下载进度</p>
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                  <Video className="h-6 w-6 text-[#6E6E73]" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#1D1D1F]">{formatNumber(totalVideos)}</p>
+                  <p className="text-sm text-[#6E6E73]">视频总数</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-[#6E6E73]" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-[#1D1D1F]">{formatDate(task.created_at)}</p>
-                <p className="text-sm text-[#6E6E73]">创建时间</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Download Progress */}
-        {progress && isRunning && (
-          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-[#E8F0FE] flex items-center justify-center">
-                <Zap className="h-5 w-5 text-[#0A84FF] animate-pulse" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-[#1D1D1F] truncate">{progress.message}</p>
-                <p className="text-sm text-[#6E6E73]">
-                  用户 {progress.currentUserIndex}/{progress.totalUsers}
-                  {progress.currentUser && ` · ${progress.currentUser}`}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-[#0A84FF]">{progress.downloadedPosts}</p>
-                <p className="text-xs text-[#6E6E73]">已下载</p>
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-[#6E6E73]" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-[#1D1D1F]">
+                    {totalDownloaded} / {totalVideos}
+                  </p>
+                  <p className="text-sm text-[#6E6E73]">下载进度</p>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6E6E73]">下载进度</span>
-                <span className="font-medium text-[#1D1D1F]">
-                  {progress.currentVideo}/{progress.totalVideos}
-                </span>
-              </div>
-              <div className="h-2 bg-[#E5E5E7] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#0A84FF] rounded-full transition-all"
-                  style={{
-                    width: `${progress.totalVideos > 0 ? (progress.currentVideo / progress.totalVideos) * 100 : 0}%`
-                  }}
-                />
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-[#6E6E73]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[#1D1D1F]">
+                    {formatDate(task.created_at)}
+                  </p>
+                  <p className="text-sm text-[#6E6E73]">创建时间</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Users List */}
-        <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm overflow-hidden">
-          {/* List Header */}
-          <div className="h-14 flex items-center justify-between px-5 border-b border-[#E5E5E7]">
-            <div className="flex items-center gap-3">
-              <span className="text-base font-semibold text-[#1D1D1F]">包含用户</span>
-              <span className="text-[13px] text-[#A1A1A6]">({task.users.length})</span>
-            </div>
-            <p className="text-[13px] text-[#6E6E73]">此任务将下载以下用户的视频</p>
           </div>
 
-          {/* Table Header */}
-          <div className="h-11 flex items-center px-5 bg-[#F2F2F4] text-[13px] font-medium text-[#6E6E73]">
-            <div className="flex-1">用户</div>
-            <div className="w-28 text-center">抖音号</div>
-            <div className="w-24 text-center">粉丝</div>
-            <div className="w-24 text-center">视频数</div>
-            <div className="w-32 text-center">已下载</div>
-          </div>
-
-          {/* Table Body */}
-          {sortedUsers.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-[#6E6E73]">
-              <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
-                <User className="h-8 w-8 text-[#A1A1A6]" />
+          {/* Download Progress */}
+          {progress && isRunning && (
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-[#E8F0FE] flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-[#0A84FF] animate-pulse" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-[#1D1D1F] truncate">{progress.message}</p>
+                  <p className="text-sm text-[#6E6E73]">
+                    用户 {progress.currentUserIndex}/{progress.totalUsers}
+                    {progress.currentUser && ` · ${progress.currentUser}`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-[#0A84FF]">{progress.downloadedPosts}</p>
+                  <p className="text-xs text-[#6E6E73]">已下载</p>
+                </div>
               </div>
-              <p className="text-base font-medium">暂无用户</p>
-              <p className="text-sm mt-1 text-[#A1A1A6]">此任务中没有添加用户</p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6E6E73]">下载进度</span>
+                  <span className="font-medium text-[#1D1D1F]">
+                    {progress.currentVideo}/{progress.totalVideos}
+                  </span>
+                </div>
+                <div className="h-2 bg-[#E5E5E7] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#0A84FF] rounded-full transition-all"
+                    style={{
+                      width: `${progress.totalVideos > 0 ? (progress.currentVideo / progress.totalVideos) * 100 : 0}%`
+                    }}
+                  />
+                </div>
+              </div>
             </div>
-          ) : (
-            sortedUsers.map((user) => {
-              const isActiveUser = isRunning && activeUsers.has(user.nickname)
-              return (
-                <div
-                  key={user.id}
-                  className={`h-[72px] flex items-center px-5 border-b border-[#E5E5E7] transition-colors ${
-                    isActiveUser
-                      ? 'bg-[#E8F0FE]/30 border-l-2 border-l-[#0A84FF]'
-                      : 'hover:bg-[#F2F2F4]/50'
-                  }`}
-                >
-                  <div className="flex-1 flex items-center gap-3">
-                    <div className="relative">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={user.avatar} className="object-cover" />
-                        <AvatarFallback className="bg-[#E8F0FE] text-[#0A84FF]">
-                          {user.nickname?.charAt(0).toUpperCase() || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      {isActiveUser && (
-                        <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-[#0A84FF] flex items-center justify-center">
-                          <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-[#1D1D1F] truncate">{user.nickname}</p>
+          )}
+
+          {/* Users List */}
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm overflow-hidden">
+            {/* List Header */}
+            <div className="h-14 flex items-center justify-between px-5 border-b border-[#E5E5E7]">
+              <div className="flex items-center gap-3">
+                <span className="text-base font-semibold text-[#1D1D1F]">包含用户</span>
+                <span className="text-[13px] text-[#A1A1A6]">({task.users.length})</span>
+              </div>
+              <p className="text-[13px] text-[#6E6E73]">此任务将下载以下用户的视频</p>
+            </div>
+
+            {/* Table Header */}
+            <div className="h-12 flex items-center px-5 bg-[#F5F5F7] text-[12px] font-semibold text-[#6E6E73] uppercase tracking-wide">
+              <div className="flex-1">用户</div>
+              <div className="w-28 text-center">抖音号</div>
+              <div className="w-24 text-center">粉丝</div>
+              <div className="w-24 text-center">视频数</div>
+              <div className="w-32 text-center">已下载</div>
+            </div>
+
+            {/* Table Body */}
+            {sortedUsers.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center text-[#6E6E73]">
+                <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                  <User className="h-8 w-8 text-[#A1A1A6]" />
+                </div>
+                <p className="text-base font-medium">暂无用户</p>
+                <p className="text-sm mt-1 text-[#A1A1A6]">此任务中没有添加用户</p>
+              </div>
+            ) : (
+              sortedUsers.map((user) => {
+                const isActiveUser = isRunning && activeUsers.has(user.nickname)
+                return (
+                  <div
+                    key={user.id}
+                    className={`h-[68px] flex items-center px-5 border-b border-[#E5E5E7] transition-colors ${
+                      isActiveUser
+                        ? 'bg-[#E8F0FE]/30 border-l-2 border-l-[#0A84FF]'
+                        : 'hover:bg-[#F2F2F4]/50'
+                    }`}
+                  >
+                    <div className="flex-1 flex items-center gap-3">
+                      <div className="relative">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={user.avatar} className="object-cover" />
+                          <AvatarFallback className="bg-[#E8F0FE] text-[#0A84FF]">
+                            {user.nickname?.charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
                         {isActiveUser && (
-                          <Badge className="text-xs px-1.5 py-0 bg-[#0A84FF] text-white">
-                            下载中
-                          </Badge>
+                          <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-[#0A84FF] flex items-center justify-center">
+                            <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
+                          </div>
                         )}
                       </div>
-                      <p className="text-xs text-[#A1A1A6] truncate max-w-[180px]">
-                        {user.signature || '暂无签名'}
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-[#1D1D1F] truncate">{user.nickname}</p>
+                          {isActiveUser && (
+                            <Badge className="text-xs px-1.5 py-0 bg-[#0A84FF] text-white">
+                              下载中
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#A1A1A6] truncate max-w-[180px]">
+                          {user.signature || '暂无签名'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-28 text-center">
+                      <span className="text-sm text-[#6E6E73] font-mono">
+                        @{user.unique_id || user.short_id || '-'}
+                      </span>
+                    </div>
+                    <div className="w-24 text-center">
+                      <Badge
+                        variant="outline"
+                        className="font-medium border-[#E5E5E7] text-[#6E6E73]"
+                      >
+                        {formatNumber(user.follower_count)}
+                      </Badge>
+                    </div>
+                    <div className="w-24 text-center">
+                      <span className="font-medium text-[#1D1D1F]">{user.aweme_count}</span>
+                    </div>
+                    <div className="w-32 flex flex-col items-center gap-1">
+                      <span className="text-sm font-medium text-[#1D1D1F]">
+                        {user.downloaded_count} / {user.aweme_count}
+                      </span>
+                      <div className="w-20 h-1.5 bg-[#E5E5E7] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            isActiveUser ? 'bg-[#0A84FF]' : 'bg-[#1D1D1F]'
+                          }`}
+                          style={{
+                            width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="w-28 text-center">
-                    <span className="text-sm text-[#6E6E73] font-mono">
-                      @{user.unique_id || user.short_id || '-'}
-                    </span>
-                  </div>
-                  <div className="w-24 text-center">
-                    <Badge variant="outline" className="font-medium border-[#E5E5E7] text-[#6E6E73]">
-                      {formatNumber(user.follower_count)}
-                    </Badge>
-                  </div>
-                  <div className="w-24 text-center">
-                    <span className="font-medium text-[#1D1D1F]">{user.aweme_count}</span>
-                  </div>
-                  <div className="w-32 flex flex-col items-center gap-1">
-                    <span className="text-sm font-medium text-[#1D1D1F]">
-                      {user.downloaded_count} / {user.aweme_count}
-                    </span>
-                    <div className="w-20 h-1.5 bg-[#E5E5E7] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isActiveUser ? 'bg-[#0A84FF]' : 'bg-[#1D1D1F]'
-                        }`}
-                        style={{
-                          width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )
-            })
-          )}
+                )
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>
