@@ -252,8 +252,8 @@ export default function SystemPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="h-16 flex items-center px-6 border-b border-[#EAE6E1] flex-shrink-0">
-        <h1 className="text-xl font-semibold text-[#312E2A]">系统设置</h1>
+      <div className="h-16 flex items-center px-6 border-b border-[#E5E5E7] bg-white flex-shrink-0">
+        <h1 className="text-xl font-semibold text-[#1D1D1F]">系统设置</h1>
       </div>
 
       {/* Content Area */}
@@ -261,16 +261,16 @@ export default function SystemPage() {
         <div className="max-w-4xl space-y-5">
 
           {/* Cookie Card */}
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
-            <h2 className="text-base font-semibold text-[#312E2A] mb-4">抖音 Cookie</h2>
-            <p className="text-xs text-[#B8B2AD] mb-4">设置抖音登录 Cookie 用于获取视频数据</p>
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+            <h2 className="text-base font-semibold text-[#1D1D1F] mb-4">抖音 Cookie</h2>
+            <p className="text-xs text-[#A1A1A6] mb-4">设置抖音登录 Cookie 用于获取视频数据</p>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleFetchCookie}
                   disabled={fetchingCookie}
-                  className="h-9 px-4 rounded-lg border border-[#EAE6E1] text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {fetchingCookie ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -285,12 +285,12 @@ export default function SystemPage() {
                 onChange={(e) => setCookie(e.target.value)}
                 placeholder="粘贴 Cookie 或点击上方按钮自动获取..."
                 rows={3}
-                className="w-full px-3 py-2 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono resize-none focus:outline-none focus:border-[#FE2C55]"
+                className="w-full px-3 py-2 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] font-mono resize-none focus:outline-none focus:border-[#0A84FF]"
               />
               <div className="flex justify-end">
                 <button
                   onClick={handleSaveCookie}
-                  className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors"
+                  className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors"
                 >
                   保存 Cookie
                 </button>
@@ -299,36 +299,36 @@ export default function SystemPage() {
           </div>
 
           {/* API Settings Card */}
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
-            <h2 className="text-base font-semibold text-[#312E2A] mb-4">API 设置</h2>
-            <p className="text-xs text-[#B8B2AD] mb-4">配置 Grok API 用于视频内容分析</p>
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+            <h2 className="text-base font-semibold text-[#1D1D1F] mb-4">API 设置</h2>
+            <p className="text-xs text-[#A1A1A6] mb-4">配置 Grok API 用于视频内容分析</p>
 
             <div className="space-y-4">
               {/* API Key */}
               <div className="flex items-center justify-between">
                 <div className="min-w-[100px]">
-                  <p className="text-sm text-[#312E2A]">API Key</p>
+                  <p className="text-sm text-[#1D1D1F]">API Key</p>
                 </div>
                 <input
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="xai-**********************"
-                  className="flex-1 h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono focus:outline-none focus:border-[#FE2C55] max-w-[400px]"
+                  className="flex-1 h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] font-mono focus:outline-none focus:border-[#0A84FF] max-w-[400px]"
                 />
               </div>
 
               {/* API URL */}
               <div className="flex items-center justify-between">
                 <div className="min-w-[100px]">
-                  <p className="text-sm text-[#312E2A]">API URL</p>
+                  <p className="text-sm text-[#1D1D1F]">API URL</p>
                 </div>
                 <input
                   type="text"
                   value={apiUrl}
                   onChange={(e) => setApiUrl(e.target.value)}
                   placeholder="https://api.x.ai/v1"
-                  className="flex-1 h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] font-mono focus:outline-none focus:border-[#FE2C55] max-w-[400px]"
+                  className="flex-1 h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] font-mono focus:outline-none focus:border-[#0A84FF] max-w-[400px]"
                 />
               </div>
 
@@ -336,7 +336,7 @@ export default function SystemPage() {
                 <button
                   onClick={handleVerifyApi}
                   disabled={verifyingApi}
-                  className="h-9 px-4 rounded-lg border border-[#EAE6E1] text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {verifyingApi ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -347,7 +347,7 @@ export default function SystemPage() {
                 </button>
                 <button
                   onClick={handleSaveApi}
-                  className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors"
+                  className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors"
                 >
                   保存
                 </button>
@@ -356,54 +356,54 @@ export default function SystemPage() {
           </div>
 
           {/* Download Settings Card */}
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
-            <h2 className="text-base font-semibold text-[#312E2A] mb-4">下载设置</h2>
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+            <h2 className="text-base font-semibold text-[#1D1D1F] mb-4">下载设置</h2>
 
             {/* Download Path */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">下载路径</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">视频下载保存位置</p>
+                <p className="text-sm text-[#1D1D1F]">下载路径</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">视频下载保存位置</p>
               </div>
               <input
                 type="text"
                 value={downloadPath}
                 onChange={(e) => setDownloadPath(e.target.value)}
                 placeholder="/Users/downloads/douyin"
-                className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] focus:outline-none focus:border-[#FE2C55] min-w-[300px]"
+                className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] focus:outline-none focus:border-[#0A84FF] min-w-[300px]"
               />
             </div>
 
             {/* Max Download Count */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">最大下载数量</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">0 表示无限制</p>
+                <p className="text-sm text-[#1D1D1F]">最大下载数量</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">0 表示无限制</p>
               </div>
               <input
                 type="number"
                 value={maxDownloadCount}
                 onChange={(e) => setMaxDownloadCount(e.target.value)}
-                className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] focus:outline-none focus:border-[#FE2C55] w-[120px] text-center"
+                className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] focus:outline-none focus:border-[#0A84FF] w-[120px] text-center"
               />
             </div>
 
             {/* Concurrency */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">并发下载数</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">同时下载的视频数量</p>
+                <p className="text-sm text-[#1D1D1F]">并发下载数</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">同时下载的视频数量</p>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowConcurrencyDropdown(!showConcurrencyDropdown)}
-                  className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] flex items-center justify-between min-w-[120px]"
+                  className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] flex items-center justify-between min-w-[120px]"
                 >
-                  <span className="text-sm text-[#312E2A]">{videoDownloadConcurrency}</span>
-                  <ChevronDown className="h-4 w-4 text-[#B8B2AD] ml-2" />
+                  <span className="text-sm text-[#1D1D1F]">{videoDownloadConcurrency}</span>
+                  <ChevronDown className="h-4 w-4 text-[#A1A1A6] ml-2" />
                 </button>
                 {showConcurrencyDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#EAE6E1] shadow-lg z-10 max-h-48 overflow-y-auto min-w-[120px]">
+                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#E5E5E7] shadow-md z-10 max-h-48 overflow-y-auto min-w-[120px]">
                     {concurrencyOptions.map((opt) => (
                       <button
                         key={opt}
@@ -411,8 +411,8 @@ export default function SystemPage() {
                           setVideoDownloadConcurrency(opt)
                           setShowConcurrencyDropdown(false)
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F7F5F3] transition-colors ${
-                          opt === videoDownloadConcurrency ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F2F2F4] transition-colors ${
+                          opt === videoDownloadConcurrency ? 'text-[#0A84FF] font-medium' : 'text-[#1D1D1F]'
                         }`}
                       >
                         {opt}
@@ -426,7 +426,7 @@ export default function SystemPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleSaveDownload}
-                className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors"
+                className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors"
               >
                 保存下载设置
               </button>
@@ -434,26 +434,26 @@ export default function SystemPage() {
           </div>
 
           {/* Analysis Settings Card */}
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
-            <h2 className="text-base font-semibold text-[#312E2A] mb-4">分析设置</h2>
-            <p className="text-xs text-[#B8B2AD] mb-4">配置视频内容分析参数</p>
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+            <h2 className="text-base font-semibold text-[#1D1D1F] mb-4">分析设置</h2>
+            <p className="text-xs text-[#A1A1A6] mb-4">配置视频内容分析参数</p>
 
             {/* Analysis Model */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">AI 模型</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">用于视频分析的模型</p>
+                <p className="text-sm text-[#1D1D1F]">AI 模型</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">用于视频分析的模型</p>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowModelDropdown(!showModelDropdown)}
-                  className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] flex items-center justify-between min-w-[200px]"
+                  className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] flex items-center justify-between min-w-[200px]"
                 >
-                  <span className="text-sm text-[#312E2A]">{analysisModel}</span>
-                  <ChevronDown className="h-4 w-4 text-[#B8B2AD] ml-2" />
+                  <span className="text-sm text-[#1D1D1F]">{analysisModel}</span>
+                  <ChevronDown className="h-4 w-4 text-[#A1A1A6] ml-2" />
                 </button>
                 {showModelDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#EAE6E1] shadow-lg z-10 min-w-[200px]">
+                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#E5E5E7] shadow-md z-10 min-w-[200px]">
                     {modelOptions.map((model) => (
                       <button
                         key={model}
@@ -461,8 +461,8 @@ export default function SystemPage() {
                           setAnalysisModel(model)
                           setShowModelDropdown(false)
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F7F5F3] transition-colors ${
-                          model === analysisModel ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F2F2F4] transition-colors ${
+                          model === analysisModel ? 'text-[#0A84FF] font-medium' : 'text-[#1D1D1F]'
                         }`}
                       >
                         {model}
@@ -476,19 +476,19 @@ export default function SystemPage() {
             {/* Analysis Concurrency */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">分析并发数</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">同时分析的视频数量</p>
+                <p className="text-sm text-[#1D1D1F]">分析并发数</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">同时分析的视频数量</p>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowAnalysisConcurrencyDropdown(!showAnalysisConcurrencyDropdown)}
-                  className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] flex items-center justify-between min-w-[120px]"
+                  className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] flex items-center justify-between min-w-[120px]"
                 >
-                  <span className="text-sm text-[#312E2A]">{analysisConcurrency}</span>
-                  <ChevronDown className="h-4 w-4 text-[#B8B2AD] ml-2" />
+                  <span className="text-sm text-[#1D1D1F]">{analysisConcurrency}</span>
+                  <ChevronDown className="h-4 w-4 text-[#A1A1A6] ml-2" />
                 </button>
                 {showAnalysisConcurrencyDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#EAE6E1] shadow-lg z-10 max-h-48 overflow-y-auto min-w-[120px]">
+                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#E5E5E7] shadow-md z-10 max-h-48 overflow-y-auto min-w-[120px]">
                     {concurrencyOptions.map((opt) => (
                       <button
                         key={opt}
@@ -496,8 +496,8 @@ export default function SystemPage() {
                           setAnalysisConcurrency(opt)
                           setShowAnalysisConcurrencyDropdown(false)
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F7F5F3] transition-colors ${
-                          opt === analysisConcurrency ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F2F2F4] transition-colors ${
+                          opt === analysisConcurrency ? 'text-[#0A84FF] font-medium' : 'text-[#1D1D1F]'
                         }`}
                       >
                         {opt}
@@ -511,33 +511,33 @@ export default function SystemPage() {
             {/* Analysis RPM */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">RPM 限制</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">每分钟最大请求数</p>
+                <p className="text-sm text-[#1D1D1F]">RPM 限制</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">每分钟最大请求数</p>
               </div>
               <input
                 type="number"
                 value={analysisRpm}
                 onChange={(e) => setAnalysisRpm(e.target.value)}
-                className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] focus:outline-none focus:border-[#FE2C55] w-[120px] text-center"
+                className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] focus:outline-none focus:border-[#0A84FF] w-[120px] text-center"
               />
             </div>
 
             {/* Analysis Slices */}
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">视频切片数</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">每个视频分析的帧数</p>
+                <p className="text-sm text-[#1D1D1F]">视频切片数</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">每个视频分析的帧数</p>
               </div>
               <div className="relative">
                 <button
                   onClick={() => setShowSlicesDropdown(!showSlicesDropdown)}
-                  className="h-10 px-3 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] flex items-center justify-between min-w-[120px]"
+                  className="h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] flex items-center justify-between min-w-[120px]"
                 >
-                  <span className="text-sm text-[#312E2A]">{analysisSlices}</span>
-                  <ChevronDown className="h-4 w-4 text-[#B8B2AD] ml-2" />
+                  <span className="text-sm text-[#1D1D1F]">{analysisSlices}</span>
+                  <ChevronDown className="h-4 w-4 text-[#A1A1A6] ml-2" />
                 </button>
                 {showSlicesDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#EAE6E1] shadow-lg z-10 min-w-[120px]">
+                  <div className="absolute top-full right-0 mt-1 bg-white rounded-lg border border-[#E5E5E7] shadow-md z-10 min-w-[120px]">
                     {slicesOptions.map((opt) => (
                       <button
                         key={opt}
@@ -545,8 +545,8 @@ export default function SystemPage() {
                           setAnalysisSlices(opt)
                           setShowSlicesDropdown(false)
                         }}
-                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F7F5F3] transition-colors ${
-                          opt === analysisSlices ? 'text-[#FE2C55] font-medium' : 'text-[#312E2A]'
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-[#F2F2F4] transition-colors ${
+                          opt === analysisSlices ? 'text-[#0A84FF] font-medium' : 'text-[#1D1D1F]'
                         }`}
                       >
                         {opt}
@@ -560,22 +560,22 @@ export default function SystemPage() {
             {/* Analysis Prompt */}
             <div className="py-3">
               <div className="mb-2">
-                <p className="text-sm text-[#312E2A]">自定义 Prompt</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">留空使用默认 Prompt</p>
+                <p className="text-sm text-[#1D1D1F]">自定义 Prompt</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">留空使用默认 Prompt</p>
               </div>
               <textarea
                 value={analysisPrompt}
                 onChange={(e) => setAnalysisPrompt(e.target.value)}
                 placeholder="自定义分析提示词..."
                 rows={4}
-                className="w-full px-3 py-2 rounded-lg bg-[#FDFCFB] border border-[#EAE6E1] text-sm text-[#312E2A] resize-none focus:outline-none focus:border-[#FE2C55]"
+                className="w-full px-3 py-2 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] resize-none focus:outline-none focus:border-[#0A84FF]"
               />
             </div>
 
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleSaveAnalysis}
-                className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors"
+                className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors"
               >
                 保存分析设置
               </button>
@@ -583,26 +583,26 @@ export default function SystemPage() {
           </div>
 
           {/* Version & Update Card */}
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
-            <h2 className="text-base font-semibold text-[#312E2A] mb-4">关于</h2>
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
+            <h2 className="text-base font-semibold text-[#1D1D1F] mb-4">关于</h2>
 
             <div className="flex items-center justify-between py-3">
               <div>
-                <p className="text-sm text-[#312E2A]">当前版本</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">v{currentVersion}</p>
+                <p className="text-sm text-[#1D1D1F]">当前版本</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">v{currentVersion}</p>
               </div>
               <div className="flex items-center gap-2">
                 {updateStatus?.status === 'available' && (
                   <button
                     onClick={handleDownloadUpdate}
-                    className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors flex items-center gap-2"
+                    className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors flex items-center gap-2"
                   >
                     <Download className="h-4 w-4" />
                     下载 v{updateStatus.info?.version}
                   </button>
                 )}
                 {updateStatus?.status === 'downloading' && (
-                  <div className="flex items-center gap-2 text-sm text-[#B8B2AD]">
+                  <div className="flex items-center gap-2 text-sm text-[#A1A1A6]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     下载中 {Math.round(updateStatus.progress || 0)}%
                   </div>
@@ -620,7 +620,7 @@ export default function SystemPage() {
                   <button
                     onClick={handleCheckUpdate}
                     disabled={checkingUpdate}
-                    className="h-9 px-4 rounded-lg border border-[#EAE6E1] text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors flex items-center gap-2 disabled:opacity-50"
                   >
                     {checkingUpdate ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -633,16 +633,16 @@ export default function SystemPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-t border-[#EAE6E1]">
+            <div className="flex items-center justify-between py-3 border-t border-[#E5E5E7]">
               <div>
-                <p className="text-sm text-[#312E2A]">GitHub</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">查看源代码和发布记录</p>
+                <p className="text-sm text-[#1D1D1F]">GitHub</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">查看源代码和发布记录</p>
               </div>
               <a
                 href="https://github.com/Everless321/dYm"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-[#FE2C55] hover:underline"
+                className="text-sm text-[#0A84FF] hover:underline"
               >
                 Everless321/dYm
               </a>
@@ -650,17 +650,17 @@ export default function SystemPage() {
           </div>
 
           {/* Danger Zone Card */}
-          <div className="bg-white rounded-xl border border-[#FE2C5540] p-5">
-            <h2 className="text-base font-semibold text-[#FE2C55] mb-4">危险区域</h2>
+          <div className="bg-white rounded-xl border border-[#0A84FF40] p-5">
+            <h2 className="text-base font-semibold text-[#0A84FF] mb-4">危险区域</h2>
 
             <div className="flex items-center justify-between py-2">
               <div>
-                <p className="text-sm text-[#312E2A]">清除所有数据</p>
-                <p className="text-xs text-[#B8B2AD] mt-1">删除所有下载的视频和用户数据</p>
+                <p className="text-sm text-[#1D1D1F]">清除所有数据</p>
+                <p className="text-xs text-[#A1A1A6] mt-1">删除所有下载的视频和用户数据</p>
               </div>
               <button
                 onClick={handleClearData}
-                className="h-9 px-4 rounded-lg border border-[#FE2C55] text-sm font-medium text-[#FE2C55] hover:bg-[#FEE2E8] transition-colors"
+                className="h-9 px-4 rounded-lg border border-[#0A84FF] text-sm font-medium text-[#0A84FF] hover:bg-[#E8F0FE] transition-colors"
               >
                 清除数据
               </button>
@@ -675,46 +675,46 @@ export default function SystemPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-[480px] shadow-xl">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#EAE6E1]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E5E7]">
               <div className="flex items-center gap-3">
-                <FolderSync className="h-5 w-5 text-[#FE2C55]" />
-                <h3 className="text-base font-semibold text-[#312E2A]">检测到下载路径变更</h3>
+                <FolderSync className="h-5 w-5 text-[#0A84FF]" />
+                <h3 className="text-base font-semibold text-[#1D1D1F]">检测到下载路径变更</h3>
               </div>
               <button
                 onClick={() => setShowMigrationDialog(false)}
-                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-[#F7F5F3] transition-colors"
+                className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-[#F2F2F4] transition-colors"
               >
-                <X className="h-4 w-4 text-[#7A7570]" />
+                <X className="h-4 w-4 text-[#6E6E73]" />
               </button>
             </div>
 
             {/* Content */}
             <div className="p-5">
-              <p className="text-sm text-[#312E2A] mb-4">
-                发现 <span className="font-medium text-[#FE2C55]">{migrationCount}</span> 个视频文件夹在旧路径中。
+              <p className="text-sm text-[#1D1D1F] mb-4">
+                发现 <span className="font-medium text-[#0A84FF]">{migrationCount}</span> 个视频文件夹在旧路径中。
               </p>
-              <p className="text-sm text-[#7A7570] mb-4">
+              <p className="text-sm text-[#6E6E73] mb-4">
                 是否将文件迁移到新路径？迁移后数据库记录将自动更新。
               </p>
-              <div className="text-xs text-[#B8B2AD] space-y-1 bg-[#F7F5F3] rounded-lg p-3">
-                <p><span className="text-[#7A7570]">旧路径:</span> {originalDownloadPath.current || '默认路径'}</p>
-                <p><span className="text-[#7A7570]">新路径:</span> {pendingNewPath}</p>
+              <div className="text-xs text-[#A1A1A6] space-y-1 bg-[#F2F2F4] rounded-lg p-3">
+                <p><span className="text-[#6E6E73]">旧路径:</span> {originalDownloadPath.current || '默认路径'}</p>
+                <p><span className="text-[#6E6E73]">新路径:</span> {pendingNewPath}</p>
               </div>
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#EAE6E1]">
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#E5E5E7]">
               <button
                 onClick={handleSkipMigration}
                 disabled={migrating}
-                className="h-9 px-4 rounded-lg border border-[#EAE6E1] text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors disabled:opacity-50"
+                className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors disabled:opacity-50"
               >
                 跳过迁移
               </button>
               <button
                 onClick={handleMigrate}
                 disabled={migrating}
-                className="h-9 px-4 rounded-lg bg-[#FE2C55] text-sm text-white font-medium hover:bg-[#E91E45] transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors flex items-center gap-2 disabled:opacity-50"
               >
                 {migrating ? (
                   <>

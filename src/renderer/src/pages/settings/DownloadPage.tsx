@@ -33,8 +33,8 @@ import {
 const PAGE_SIZE = 10
 
 const statusConfig = {
-  pending: { label: '待执行', icon: Clock, color: 'text-[#7A7570]', bg: 'bg-[#F7F5F3]' },
-  running: { label: '执行中', icon: Loader2, color: 'text-[#FE2C55]', bg: 'bg-[#FEE2E8]' },
+  pending: { label: '待执行', icon: Clock, color: 'text-[#6E6E73]', bg: 'bg-[#F2F2F4]' },
+  running: { label: '执行中', icon: Loader2, color: 'text-[#0A84FF]', bg: 'bg-[#E8F0FE]' },
   completed: { label: '已完成', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
   failed: { label: '失败', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' }
 }
@@ -207,11 +207,11 @@ export default function DownloadPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
-        <h1 className="text-xl font-semibold text-[#312E2A]">视频下载</h1>
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
+        <h1 className="text-xl font-semibold text-[#1D1D1F]">视频下载</h1>
         <Button
           onClick={handleOpenAdd}
-          className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+          className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
         >
           <Plus className="h-4 w-4 mr-2" />
           添加任务
@@ -221,17 +221,17 @@ export default function DownloadPage() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 space-y-5">
         {/* Task List Card */}
-        <div className="bg-white rounded-xl border border-[#EAE6E1] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm overflow-hidden">
           {/* List Header */}
-          <div className="h-14 flex items-center justify-between px-5 border-b border-[#EAE6E1]">
+          <div className="h-14 flex items-center justify-between px-5 border-b border-[#E5E5E7]">
             <div className="flex items-center gap-3">
-              <span className="text-base font-semibold text-[#312E2A]">任务列表</span>
-              <span className="text-[13px] text-[#B8B2AD]">({tasks.length})</span>
+              <span className="text-base font-semibold text-[#1D1D1F]">任务列表</span>
+              <span className="text-[13px] text-[#A1A1A6]">({tasks.length})</span>
             </div>
           </div>
 
           {/* Table Header */}
-          <div className="h-11 flex items-center px-5 bg-[#F7F5F3] text-[13px] font-medium text-[#7A7570]">
+          <div className="h-11 flex items-center px-5 bg-[#F2F2F4] text-[13px] font-medium text-[#6E6E73]">
             <div className="w-[260px]">任务名称</div>
             <div className="flex-1">用户</div>
             <div className="w-24 text-center">状态</div>
@@ -242,12 +242,12 @@ export default function DownloadPage() {
 
           {/* Table Body */}
           {paginatedTasks.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-[#7A7570]">
-              <div className="h-16 w-16 rounded-full bg-[#F7F5F3] flex items-center justify-center mb-4">
-                <Download className="h-8 w-8 text-[#B8B2AD]" />
+            <div className="py-20 flex flex-col items-center justify-center text-[#6E6E73]">
+              <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                <Download className="h-8 w-8 text-[#A1A1A6]" />
               </div>
               <p className="text-base font-medium">暂无任务</p>
-              <p className="text-sm mt-1 text-[#B8B2AD]">点击上方"添加任务"按钮开始</p>
+              <p className="text-sm mt-1 text-[#A1A1A6]">点击上方"添加任务"按钮开始</p>
             </div>
           ) : (
             paginatedTasks.map((task) => {
@@ -256,27 +256,27 @@ export default function DownloadPage() {
               return (
                 <div
                   key={task.id}
-                  className="h-[72px] flex items-center px-5 border-b border-[#EAE6E1] hover:bg-[#F7F5F3]/50 transition-colors group"
+                  className="h-[72px] flex items-center px-5 border-b border-[#E5E5E7] hover:bg-[#F2F2F4]/50 transition-colors group"
                 >
                   <div className="w-[260px] flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-[#B8B2AD]" />
-                    <span className="font-medium text-[#312E2A] truncate">{task.name}</span>
+                    <FileText className="h-5 w-5 text-[#A1A1A6]" />
+                    <span className="font-medium text-[#1D1D1F] truncate">{task.name}</span>
                   </div>
                   <div className="flex-1 flex items-center gap-2">
                     <div className="flex -space-x-2">
                       {task.users.slice(0, 3).map((user) => (
                         <Avatar key={user.id} className="h-7 w-7 border-2 border-white">
                           <AvatarImage src={user.avatar} />
-                          <AvatarFallback className="text-xs bg-[#FEE2E8] text-[#FE2C55]">
+                          <AvatarFallback className="text-xs bg-[#E8F0FE] text-[#0A84FF]">
                             {user.nickname?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                       ))}
                     </div>
                     {task.users.length > 3 && (
-                      <span className="text-xs text-[#B8B2AD]">+{task.users.length - 3}</span>
+                      <span className="text-xs text-[#A1A1A6]">+{task.users.length - 3}</span>
                     )}
-                    <span className="text-sm text-[#7A7570] ml-1">{task.users.length} 人</span>
+                    <span className="text-sm text-[#6E6E73] ml-1">{task.users.length} 人</span>
                   </div>
                   <div className="w-24 flex justify-center">
                     <Badge className={`gap-1 ${status.bg} ${status.color} border-0`}>
@@ -293,20 +293,20 @@ export default function DownloadPage() {
                           <Timer className="h-3 w-3" />
                           已开启
                         </Badge>
-                        <span className="text-xs text-[#B8B2AD] font-mono">{task.sync_cron}</span>
+                        <span className="text-xs text-[#A1A1A6] font-mono">{task.sync_cron}</span>
                       </>
                     ) : (
-                      <span className="text-xs text-[#B8B2AD]">未设置</span>
+                      <span className="text-xs text-[#A1A1A6]">未设置</span>
                     )}
                   </div>
-                  <div className="w-32 text-center text-sm text-[#7A7570]">
+                  <div className="w-32 text-center text-sm text-[#6E6E73]">
                     {formatDate(task.created_at)}
                   </div>
                   <div className="w-32 flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                      className="h-8 w-8 text-[#6E6E73] hover:text-[#1D1D1F]"
                       onClick={() => navigate(`/download/${task.id}`)}
                       title="查看详情"
                     >
@@ -315,7 +315,7 @@ export default function DownloadPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                      className="h-8 w-8 text-[#6E6E73] hover:text-[#1D1D1F]"
                       onClick={() => handleOpenEdit(task)}
                       title="编辑任务"
                     >
@@ -324,7 +324,7 @@ export default function DownloadPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[#7A7570] hover:text-[#FE2C55]"
+                      className="h-8 w-8 text-[#6E6E73] hover:text-[#0A84FF]"
                       onClick={() => handleDelete(task.id)}
                       title="删除任务"
                     >
@@ -338,8 +338,8 @@ export default function DownloadPage() {
 
           {/* Pagination */}
           {tasks.length > PAGE_SIZE && (
-            <div className="h-14 flex items-center justify-between px-5 border-t border-[#EAE6E1]">
-              <span className="text-sm text-[#7A7570]">
+            <div className="h-14 flex items-center justify-between px-5 border-t border-[#E5E5E7]">
+              <span className="text-sm text-[#6E6E73]">
                 第 {currentPage} / {totalPages} 页，共 {tasks.length} 条
               </span>
               <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export default function DownloadPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="border-[#EAE6E1]"
+                  className="border-[#E5E5E7]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   上一页
@@ -358,7 +358,7 @@ export default function DownloadPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="border-[#EAE6E1]"
+                  className="border-[#E5E5E7]"
                 >
                   下一页
                   <ChevronRight className="h-4 w-4" />
@@ -372,32 +372,32 @@ export default function DownloadPage() {
       {/* Add/Edit Task Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[520px] p-0 overflow-hidden" showCloseButton={false}>
-          <div className="h-[60px] flex items-center justify-between px-6 border-b border-[#EAE6E1]">
-            <h2 className="text-lg font-semibold text-[#312E2A]">
+          <div className="h-[60px] flex items-center justify-between px-6 border-b border-[#E5E5E7]">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">
               {editingTask ? '编辑任务' : '添加下载任务'}
             </h2>
             <button
               onClick={() => setOpen(false)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F7F5F3] transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F2F2F4] transition-colors"
             >
-              <X className="h-5 w-5 text-[#B8B2AD]" />
+              <X className="h-5 w-5 text-[#A1A1A6]" />
             </button>
           </div>
 
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#312E2A]">任务名称</Label>
+                <Label className="text-sm font-medium text-[#1D1D1F]">任务名称</Label>
                 <Input
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
                   placeholder="输入任务名称..."
                   disabled={loading}
-                  className="h-10 border-[#EAE6E1]"
+                  className="h-10 border-[#E5E5E7]"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#312E2A]">并发数</Label>
+                <Label className="text-sm font-medium text-[#1D1D1F]">并发数</Label>
                 <Input
                   type="number"
                   min="1"
@@ -406,37 +406,37 @@ export default function DownloadPage() {
                   onChange={(e) => setConcurrency(e.target.value)}
                   placeholder="3"
                   disabled={loading}
-                  className="h-10 border-[#EAE6E1]"
+                  className="h-10 border-[#E5E5E7]"
                 />
-                <p className="text-xs text-[#B8B2AD]">同时下载的用户数</p>
+                <p className="text-xs text-[#A1A1A6]">同时下载的用户数</p>
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-[#312E2A]">选择用户</Label>
+                <Label className="text-sm font-medium text-[#1D1D1F]">选择用户</Label>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleSelectAll}
                   disabled={loading}
-                  className="text-[#7A7570] hover:text-[#312E2A]"
+                  className="text-[#6E6E73] hover:text-[#1D1D1F]"
                 >
                   {selectedUserIds.length === users.length ? '取消全选' : '全选'}
                 </Button>
               </div>
-              <ScrollArea className="h-48 rounded-lg border border-[#EAE6E1]">
+              <ScrollArea className="h-48 rounded-lg border border-[#E5E5E7]">
                 <div className="p-2 space-y-1">
                   {users.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-[#7A7570]">
+                    <div className="flex flex-col items-center justify-center py-8 text-[#6E6E73]">
                       <p className="text-sm">暂无用户</p>
-                      <p className="text-xs mt-1 text-[#B8B2AD]">请先在用户管理中添加用户</p>
+                      <p className="text-xs mt-1 text-[#A1A1A6]">请先在用户管理中添加用户</p>
                     </div>
                   ) : (
                     users.map((user) => (
                       <div
                         key={user.id}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#F7F5F3] transition-colors cursor-pointer"
+                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#F2F2F4] transition-colors cursor-pointer"
                         onClick={() => handleUserToggle(user.id)}
                       >
                         <Checkbox
@@ -446,33 +446,33 @@ export default function DownloadPage() {
                         />
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user.avatar} />
-                          <AvatarFallback className="bg-[#FEE2E8] text-[#FE2C55]">
+                          <AvatarFallback className="bg-[#E8F0FE] text-[#0A84FF]">
                             {user.nickname?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-[#312E2A] truncate text-sm">{user.nickname}</p>
-                          <p className="text-xs text-[#B8B2AD]">{user.aweme_count} 个视频</p>
+                          <p className="font-medium text-[#1D1D1F] truncate text-sm">{user.nickname}</p>
+                          <p className="text-xs text-[#A1A1A6]">{user.aweme_count} 个视频</p>
                         </div>
                       </div>
                     ))
                   )}
                 </div>
               </ScrollArea>
-              <p className="text-xs text-[#B8B2AD]">已选择 {selectedUserIds.length} 个用户</p>
+              <p className="text-xs text-[#A1A1A6]">已选择 {selectedUserIds.length} 个用户</p>
             </div>
 
-            <div className="p-4 rounded-lg border border-[#EAE6E1] bg-[#F7F5F3]/50 space-y-4">
+            <div className="p-4 rounded-lg border border-[#E5E5E7] bg-[#F2F2F4]/50 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-sm font-medium text-[#312E2A]">定时同步</Label>
-                  <p className="text-xs text-[#B8B2AD]">按设定时间自动执行下载任务</p>
+                  <Label className="text-sm font-medium text-[#1D1D1F]">定时同步</Label>
+                  <p className="text-xs text-[#A1A1A6]">按设定时间自动执行下载任务</p>
                 </div>
                 <Switch checked={autoSync} onCheckedChange={setAutoSync} disabled={loading} />
               </div>
               {autoSync && (
-                <div className="space-y-2 pt-3 border-t border-[#EAE6E1]">
-                  <Label className="text-sm font-medium text-[#312E2A]">Cron 表达式</Label>
+                <div className="space-y-2 pt-3 border-t border-[#E5E5E7]">
+                  <Label className="text-sm font-medium text-[#1D1D1F]">Cron 表达式</Label>
                   <Input
                     value={syncCron}
                     onChange={(e) => {
@@ -481,10 +481,10 @@ export default function DownloadPage() {
                     }}
                     placeholder="0 2 * * *"
                     disabled={loading}
-                    className={`h-10 border-[#EAE6E1] ${cronError ? 'border-red-500' : ''}`}
+                    className={`h-10 border-[#E5E5E7] ${cronError ? 'border-red-500' : ''}`}
                   />
                   {cronError && <p className="text-xs text-red-500">{cronError}</p>}
-                  <div className="text-xs text-[#B8B2AD] space-y-1">
+                  <div className="text-xs text-[#A1A1A6] space-y-1">
                     <p>常用示例:</p>
                     <p className="font-mono">0 2 * * * - 每天凌晨 2:00</p>
                     <p className="font-mono">0 */6 * * * - 每 6 小时</p>
@@ -494,19 +494,19 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          <DialogFooter className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#EAE6E1]">
+          <DialogFooter className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#E5E5E7]">
             <Button
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="h-10 px-5 border-[#EAE6E1]"
+              className="h-10 px-5 border-[#E5E5E7]"
             >
               取消
             </Button>
             <Button
               onClick={handleSave}
               disabled={loading || !taskName.trim() || selectedUserIds.length === 0}
-              className="h-10 px-5 bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+              className="h-10 px-5 bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
             >
               {loading ? (
                 <>

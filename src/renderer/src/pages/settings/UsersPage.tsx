@@ -438,11 +438,11 @@ export default function UsersPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
-        <h1 className="text-xl font-semibold text-[#312E2A]">用户管理</h1>
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
+        <h1 className="text-xl font-semibold text-[#1D1D1F]">用户管理</h1>
         <Button
           onClick={() => setOpen(true)}
-          className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+          className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
         >
           <Plus className="h-4 w-4 mr-2" />
           添加用户
@@ -452,24 +452,24 @@ export default function UsersPage() {
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
         {/* User List Card */}
-        <div className="bg-white rounded-xl border border-[#EAE6E1] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm overflow-hidden">
           {/* List Header */}
-          <div className="flex flex-col border-b border-[#EAE6E1]">
+          <div className="flex flex-col border-b border-[#E5E5E7]">
             <div className="h-14 flex items-center justify-between px-5">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-base font-semibold text-[#312E2A]">已添加用户</span>
-                  <span className="text-[13px] text-[#B8B2AD]">
+                  <span className="text-base font-semibold text-[#1D1D1F]">已添加用户</span>
+                  <span className="text-[13px] text-[#A1A1A6]">
                     ({filteredUsers.length}/{users.length})
                   </span>
                 </div>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B8B2AD]" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1A6]" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="搜索用户..."
-                    className="h-9 w-48 pl-9 border-[#EAE6E1] text-sm"
+                    className="h-9 w-48 pl-9 border-[#E5E5E7] text-sm"
                   />
                 </div>
               </div>
@@ -480,7 +480,7 @@ export default function UsersPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleBatchCreateDownloadTask}
-                    className="border-[#EAE6E1] text-[#312E2A]"
+                    className="border-[#E5E5E7] text-[#1D1D1F]"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     批量下载 ({selectedIds.size})
@@ -489,7 +489,7 @@ export default function UsersPage() {
                     variant="outline"
                     size="sm"
                     onClick={handleOpenBatchEdit}
-                    className="border-[#EAE6E1] text-[#312E2A]"
+                    className="border-[#E5E5E7] text-[#1D1D1F]"
                   >
                     <Settings2 className="h-4 w-4 mr-2" />
                     批量编辑
@@ -501,7 +501,7 @@ export default function UsersPage() {
                 size="sm"
                 onClick={handleBatchRefresh}
                 disabled={batchRefreshing || users.length === 0}
-                className="border-[#EAE6E1] text-[#312E2A]"
+                className="border-[#E5E5E7] text-[#1D1D1F]"
               >
                 {batchRefreshing ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -514,15 +514,15 @@ export default function UsersPage() {
             </div>
 
             {/* Filter Row */}
-            <div className="h-11 flex items-center gap-4 px-5 bg-[#F7F5F3]/50">
-              <div className="flex items-center gap-1.5 text-[#7A7570]">
+            <div className="h-11 flex items-center gap-4 px-5 bg-[#F2F2F4]/50">
+              <div className="flex items-center gap-1.5 text-[#6E6E73]">
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="text-xs font-medium">筛选</span>
               </div>
               <select
                 value={showInHomeFilter}
                 onChange={(e) => setShowInHomeFilter(e.target.value as ShowInHomeFilter)}
-                className="h-7 px-2 text-xs border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
+                className="h-7 px-2 text-xs border border-[#E5E5E7] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20"
               >
                 <option value="all">首页显示: 全部</option>
                 <option value="yes">首页显示: 是</option>
@@ -531,7 +531,7 @@ export default function UsersPage() {
               <select
                 value={autoSyncFilter}
                 onChange={(e) => setAutoSyncFilter(e.target.value as AutoSyncFilter)}
-                className="h-7 px-2 text-xs border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
+                className="h-7 px-2 text-xs border border-[#E5E5E7] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20"
               >
                 <option value="all">自动同步: 全部</option>
                 <option value="yes">自动同步: 开启</option>
@@ -540,7 +540,7 @@ export default function UsersPage() {
               <select
                 value={downloadStatusFilter}
                 onChange={(e) => setDownloadStatusFilter(e.target.value as DownloadStatusFilter)}
-                className="h-7 px-2 text-xs border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
+                className="h-7 px-2 text-xs border border-[#E5E5E7] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20"
               >
                 <option value="all">下载状态: 全部</option>
                 <option value="completed">下载状态: 已完成</option>
@@ -550,7 +550,7 @@ export default function UsersPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="h-7 px-2 text-xs border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
+                className="h-7 px-2 text-xs border border-[#E5E5E7] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20"
               >
                 <option value="default">排序: 默认</option>
                 <option value="undownloaded">排序: 未下载数</option>
@@ -560,7 +560,7 @@ export default function UsersPage() {
           </div>
 
           {/* Table Header */}
-          <div className="h-11 flex items-center px-5 bg-[#F7F5F3] text-[13px] font-medium text-[#7A7570]">
+          <div className="h-11 flex items-center px-5 bg-[#F2F2F4] text-[13px] font-medium text-[#6E6E73]">
             <div className="w-10">
               <Checkbox
                 checked={filteredUsers.length > 0 && selectedIds.size === filteredUsers.length}
@@ -578,18 +578,18 @@ export default function UsersPage() {
 
           {/* Table Body */}
           {paginatedUsers.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-[#7A7570]">
-              <div className="h-16 w-16 rounded-full bg-[#F7F5F3] flex items-center justify-center mb-4">
-                <User className="h-8 w-8 text-[#B8B2AD]" />
+            <div className="py-20 flex flex-col items-center justify-center text-[#6E6E73]">
+              <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                <User className="h-8 w-8 text-[#A1A1A6]" />
               </div>
               <p className="text-base font-medium">暂无用户</p>
-              <p className="text-sm mt-1 text-[#B8B2AD]">点击上方添加用户按钮开始</p>
+              <p className="text-sm mt-1 text-[#A1A1A6]">点击上方添加用户按钮开始</p>
             </div>
           ) : (
             paginatedUsers.map((user) => (
               <div
                 key={user.id}
-                className="h-[72px] flex items-center px-5 border-b border-[#EAE6E1] hover:bg-[#F7F5F3]/50 transition-colors group"
+                className="h-[72px] flex items-center px-5 border-b border-[#E5E5E7] hover:bg-[#F2F2F4]/50 transition-colors group"
               >
                 <div className="w-10">
                   <Checkbox
@@ -600,13 +600,13 @@ export default function UsersPage() {
                 <div className="flex-1 flex items-center gap-3">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={user.avatar} className="object-cover" />
-                    <AvatarFallback className="bg-[#FEE2E8] text-[#FE2C55]">
+                    <AvatarFallback className="bg-[#E8F0FE] text-[#0A84FF]">
                       {user.nickname?.charAt(0).toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
-                    <p className="font-medium text-[#312E2A] truncate">{user.nickname}</p>
-                    <p className="text-xs text-[#B8B2AD] truncate">
+                    <p className="font-medium text-[#1D1D1F] truncate">{user.nickname}</p>
+                    <p className="text-xs text-[#A1A1A6] truncate">
                       @{user.unique_id || user.short_id || '-'}
                     </p>
                   </div>
@@ -614,18 +614,18 @@ export default function UsersPage() {
                 <div className="w-28 text-center">
                   <Badge
                     variant="outline"
-                    className="font-medium border-[#EAE6E1] text-[#7A7570]"
+                    className="font-medium border-[#E5E5E7] text-[#6E6E73]"
                   >
                     {formatNumber(user.follower_count)}
                   </Badge>
                 </div>
                 <div className="w-32 flex flex-col items-center gap-1">
-                  <span className="text-sm font-medium text-[#312E2A]">
+                  <span className="text-sm font-medium text-[#1D1D1F]">
                     {user.downloaded_count} / {user.aweme_count}
                   </span>
-                  <div className="w-20 h-1.5 bg-[#EAE6E1] rounded-full overflow-hidden">
+                  <div className="w-20 h-1.5 bg-[#E5E5E7] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#FE2C55] rounded-full transition-all"
+                      className="h-full bg-[#0A84FF] rounded-full transition-all"
                       style={{
                         width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`
                       }}
@@ -633,13 +633,13 @@ export default function UsersPage() {
                   </div>
                 </div>
                 <div className="w-16 text-center">
-                  <span className="text-sm text-[#7A7570]">
+                  <span className="text-sm text-[#6E6E73]">
                     {user.max_download_count > 0 ? user.max_download_count : '-'}
                   </span>
                 </div>
                 <div className="w-24 flex flex-col items-center gap-1">
                   {syncingUserId === user.id && syncProgress ? (
-                    <span className="text-xs text-[#FE2C55]">
+                    <span className="text-xs text-[#0A84FF]">
                       {syncProgress.downloadedCount}/{syncProgress.totalVideos || '?'}
                     </span>
                   ) : user.auto_sync ? (
@@ -648,7 +648,7 @@ export default function UsersPage() {
                       自动
                     </Badge>
                   ) : (
-                    <span className="text-xs text-[#B8B2AD]">手动</span>
+                    <span className="text-xs text-[#A1A1A6]">手动</span>
                   )}
                 </div>
                 <div className="w-20 flex justify-center">
@@ -662,7 +662,7 @@ export default function UsersPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[#FE2C55] hover:text-[#FE2C55]"
+                      className="h-8 w-8 text-[#0A84FF] hover:text-[#0A84FF]"
                       onClick={() => handleStopSync(user.id)}
                       title="停止同步"
                     >
@@ -672,7 +672,7 @@ export default function UsersPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-[#7A7570] hover:text-green-600"
+                      className="h-8 w-8 text-[#6E6E73] hover:text-green-600"
                       onClick={() => handleStartSync(user)}
                       disabled={syncingUserId !== null}
                       title="开始同步"
@@ -683,7 +683,7 @@ export default function UsersPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-[#7A7570] hover:text-[#FE2C55]"
+                    className="h-8 w-8 text-[#6E6E73] hover:text-[#0A84FF]"
                     onClick={() => window.open(user.homepage_url, '_blank')}
                     title="打开主页"
                   >
@@ -692,7 +692,7 @@ export default function UsersPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                    className="h-8 w-8 text-[#6E6E73] hover:text-[#1D1D1F]"
                     onClick={() => handleOpenEdit(user)}
                     title="编辑"
                   >
@@ -701,7 +701,7 @@ export default function UsersPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-[#7A7570] hover:text-[#312E2A]"
+                    className="h-8 w-8 text-[#6E6E73] hover:text-[#1D1D1F]"
                     onClick={() => handleRefresh(user)}
                     disabled={refreshingId === user.id}
                     title="刷新信息"
@@ -713,7 +713,7 @@ export default function UsersPage() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-[#7A7570] hover:text-[#FE2C55]"
+                    className="h-8 w-8 text-[#6E6E73] hover:text-[#0A84FF]"
                     onClick={() => handleDelete(user.id)}
                     title="删除用户"
                   >
@@ -726,17 +726,17 @@ export default function UsersPage() {
 
           {/* Pagination */}
           {filteredUsers.length > 0 && (
-            <div className="h-14 flex items-center justify-between px-5 border-t border-[#EAE6E1]">
+            <div className="h-14 flex items-center justify-between px-5 border-t border-[#E5E5E7]">
               <div className="flex items-center gap-4">
-                <span className="text-sm text-[#7A7570]">
+                <span className="text-sm text-[#6E6E73]">
                   第 {currentPage} / {totalPages || 1} 页
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[#7A7570]">每页</span>
+                  <span className="text-sm text-[#6E6E73]">每页</span>
                   <select
                     value={pageSize}
                     onChange={(e) => setPageSize(Number(e.target.value))}
-                    className="h-8 px-2 text-sm border border-[#EAE6E1] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20"
+                    className="h-8 px-2 text-sm border border-[#E5E5E7] rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20"
                   >
                     {PAGE_SIZE_OPTIONS.map((size) => (
                       <option key={size} value={size}>
@@ -744,7 +744,7 @@ export default function UsersPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-[#7A7570]">条</span>
+                  <span className="text-sm text-[#6E6E73]">条</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -753,7 +753,7 @@ export default function UsersPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="border-[#EAE6E1]"
+                  className="border-[#E5E5E7]"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   上一页
@@ -763,7 +763,7 @@ export default function UsersPage() {
                   size="sm"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages || totalPages === 0}
-                  className="border-[#EAE6E1]"
+                  className="border-[#E5E5E7]"
                 >
                   下一页
                   <ChevronRight className="h-4 w-4" />
@@ -777,71 +777,71 @@ export default function UsersPage() {
       {/* Add User Modal */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden" showCloseButton={false}>
-          <div className="h-[60px] flex items-center justify-between px-6 border-b border-[#EAE6E1]">
-            <h2 className="text-lg font-semibold text-[#312E2A]">添加抖音用户</h2>
+          <div className="h-[60px] flex items-center justify-between px-6 border-b border-[#E5E5E7]">
+            <h2 className="text-lg font-semibold text-[#1D1D1F]">添加抖音用户</h2>
             <button
               onClick={() => setOpen(false)}
-              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F7F5F3] transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#F2F2F4] transition-colors"
             >
-              <X className="h-5 w-5 text-[#B8B2AD]" />
+              <X className="h-5 w-5 text-[#A1A1A6]" />
             </button>
           </div>
           <div className="p-6 space-y-5">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#312E2A]">用户主页链接</Label>
+              <Label className="text-sm font-medium text-[#1D1D1F]">用户主页链接</Label>
               <Input
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.douyin.com/user/..."
                 disabled={loading}
-                className="h-11 border-[#EAE6E1]"
+                className="h-11 border-[#E5E5E7]"
               />
             </div>
             <div className="space-y-3">
-              <Label className="text-sm font-medium text-[#312E2A]">下载内容类型</Label>
+              <Label className="text-sm font-medium text-[#1D1D1F]">下载内容类型</Label>
               <div className="space-y-2">
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#FE2C55] bg-[#FEE2E8]/30 cursor-pointer">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#0A84FF] bg-[#E8F0FE]/30 cursor-pointer">
                   <input type="radio" name="type" value="all" defaultChecked className="sr-only" />
-                  <div className="h-5 w-5 rounded-full border-2 border-[#FE2C55] flex items-center justify-center">
-                    <div className="h-2.5 w-2.5 rounded-full bg-[#FE2C55]" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#0A84FF] flex items-center justify-center">
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#0A84FF]" />
                   </div>
                   <div>
-                    <p className="font-medium text-[#312E2A]">作品</p>
-                    <p className="text-xs text-[#7A7570]">下载用户发布的所有作品</p>
+                    <p className="font-medium text-[#1D1D1F]">作品</p>
+                    <p className="text-xs text-[#6E6E73]">下载用户发布的所有作品</p>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#EAE6E1] cursor-pointer hover:bg-[#F7F5F3] transition-colors">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#E5E5E7] cursor-pointer hover:bg-[#F2F2F4] transition-colors">
                   <input type="radio" name="type" value="video" className="sr-only" />
-                  <div className="h-5 w-5 rounded-full border-2 border-[#EAE6E1]" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#E5E5E7]" />
                   <div>
-                    <p className="font-medium text-[#312E2A]">视频</p>
-                    <p className="text-xs text-[#7A7570]">仅下载用户发布的视频作品(不含图文)</p>
+                    <p className="font-medium text-[#1D1D1F]">视频</p>
+                    <p className="text-xs text-[#6E6E73]">仅下载用户发布的视频作品(不含图文)</p>
                   </div>
                 </label>
-                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#EAE6E1] cursor-pointer hover:bg-[#F7F5F3] transition-colors">
+                <label className="flex items-center gap-3 p-3 rounded-lg border border-[#E5E5E7] cursor-pointer hover:bg-[#F2F2F4] transition-colors">
                   <input type="radio" name="type" value="liked" className="sr-only" />
-                  <div className="h-5 w-5 rounded-full border-2 border-[#EAE6E1]" />
+                  <div className="h-5 w-5 rounded-full border-2 border-[#E5E5E7]" />
                   <div>
-                    <p className="font-medium text-[#312E2A]">喜欢</p>
-                    <p className="text-xs text-[#7A7570]">下载用户点赞的所有公开作品</p>
+                    <p className="font-medium text-[#1D1D1F]">喜欢</p>
+                    <p className="text-xs text-[#6E6E73]">下载用户点赞的所有公开作品</p>
                   </div>
                 </label>
               </div>
             </div>
           </div>
-          <div className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#EAE6E1]">
+          <div className="h-[72px] flex items-center justify-end gap-3 px-6 border-t border-[#E5E5E7]">
             <Button
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
-              className="h-10 px-5 border-[#EAE6E1]"
+              className="h-10 px-5 border-[#E5E5E7]"
             >
               取消
             </Button>
             <Button
               onClick={handleAddUser}
               disabled={loading || !url.trim()}
-              className="h-10 px-5 bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+              className="h-10 px-5 bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
             >
               {loading ? (
                 <>
@@ -895,7 +895,7 @@ export default function UsersPage() {
                 onCheckedChange={(checked) => setEditForm((f) => ({ ...f, show_in_home: checked }))}
               />
             </div>
-            <div className="border-t border-[#EAE6E1] pt-4 space-y-4">
+            <div className="border-t border-[#E5E5E7] pt-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>自动同步</Label>

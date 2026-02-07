@@ -66,18 +66,18 @@ export function AppLayout() {
   }
 
   return (
-    <div className="h-screen flex bg-[#FDFCFB]">
+    <div className="h-screen flex bg-[#F5F5F7]">
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 flex flex-col bg-white border-r border-[#EAE6E1]">
+      <aside className="w-60 flex-shrink-0 flex flex-col bg-white border-r border-[#E5E5E7]">
         {/* Logo */}
-        <div className="h-[72px] flex items-center gap-3 px-6 border-b border-[#EAE6E1]">
-          <Download className="h-7 w-7 text-[#FE2C55]" />
-          <span className="text-lg font-semibold text-[#312E2A]">dYm</span>
+        <div className="h-[72px] flex items-center gap-3 px-6 border-b border-[#E5E5E7]">
+          <Download className="h-7 w-7 text-[#0A84FF]" />
+          <span className="text-lg font-semibold text-[#1D1D1F]">dYm</span>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1">
-          <span className="block px-4 py-2 text-[11px] font-medium text-[#B8B2AD] font-mono tracking-wide">
+          <span className="block px-4 py-2 text-[11px] font-medium text-[#A1A1A6] font-mono tracking-wide">
             菜单
           </span>
           {navItems.map((item) => {
@@ -90,12 +90,12 @@ export function AppLayout() {
                 className={cn(
                   'flex items-center gap-3 h-12 px-4 rounded-lg transition-colors',
                   active
-                    ? 'bg-[#FEE2E8] text-[#312E2A] font-medium'
-                    : 'text-[#7A7570] hover:bg-[#F7F5F3]'
+                    ? 'bg-[#E8F0FE] text-[#1D1D1F] font-medium'
+                    : 'text-[#6E6E73] hover:bg-[#F2F2F4]'
                 )}
               >
                 <Icon
-                  className={cn('h-5 w-5', active ? 'text-[#FE2C55]' : 'text-[#7A7570]')}
+                  className={cn('h-5 w-5', active ? 'text-[#0A84FF]' : 'text-[#6E6E73]')}
                 />
                 <span className="text-sm">{item.label}</span>
               </Link>

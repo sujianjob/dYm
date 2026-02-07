@@ -178,7 +178,7 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => onOpenChange(false)}>
       <div
-        className="flex bg-white rounded-xl overflow-hidden shadow-2xl"
+        className="flex bg-white rounded-2xl overflow-hidden shadow-xl border border-[#E5E5E7]"
         style={{ width: 780, height: 520 }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -265,14 +265,14 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
         <div className="flex flex-col" style={{ width: 400, padding: 20 }}>
           {/* 标题行 */}
           <div className="flex items-start justify-between gap-3">
-            <h3 className="text-base font-medium text-[#312E2A] leading-tight line-clamp-2 flex-1">
+            <h3 className="text-base font-medium text-[#1D1D1F] leading-tight line-clamp-2 flex-1">
               {post?.desc || post?.caption || '无标题'}
             </h3>
             <button
               onClick={() => onOpenChange(false)}
-              className="w-7 h-7 rounded-full bg-[#F5F5F5] hover:bg-[#EAE6E1] flex items-center justify-center flex-shrink-0 transition-colors"
+              className="w-7 h-7 rounded-full bg-[#F2F2F4] hover:bg-[#E5E5E7] flex items-center justify-center flex-shrink-0 transition-colors"
             >
-              <X className="h-4 w-4 text-[#7A7570]" />
+              <X className="h-4 w-4 text-[#6E6E73]" />
             </button>
           </div>
 
@@ -282,7 +282,7 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
               {tags.slice(0, 5).map((tag, idx) => (
                 <span
                   key={idx}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#FEE2E8] text-[#FE2C55]"
+                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#E8F0FE] text-[#0A84FF]"
                 >
                   #{tag}
                 </span>
@@ -293,22 +293,22 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
           {/* 作者行 */}
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-full bg-[#F7F5F3] flex items-center justify-center overflow-hidden">
-                <span className="text-sm font-medium text-[#7A7570]">
+              <div className="w-10 h-10 rounded-full bg-[#F2F2F4] flex items-center justify-center overflow-hidden">
+                <span className="text-sm font-medium text-[#6E6E73]">
                   {post?.nickname?.charAt(0) || 'U'}
                 </span>
               </div>
               <div>
-                <p className="text-sm font-medium text-[#312E2A]">@{post?.nickname}</p>
-                <p className="text-xs text-[#B8B2AD]">粉丝 --</p>
+                <p className="text-sm font-medium text-[#1D1D1F]">@{post?.nickname}</p>
+                <p className="text-xs text-[#A1A1A6]">粉丝 --</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1 text-[#7A7570]">
+              <div className="flex items-center gap-1 text-[#6E6E73]">
                 <Heart className="h-4 w-4" />
                 <span className="text-xs">--</span>
               </div>
-              <div className="flex items-center gap-1 text-[#7A7570]">
+              <div className="flex items-center gap-1 text-[#6E6E73]">
                 <MessageCircle className="h-4 w-4" />
                 <span className="text-xs">--</span>
               </div>
@@ -316,12 +316,12 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
           </div>
 
           {/* 分割线 */}
-          <div className="h-px bg-[#EAE6E1] my-4" />
+          <div className="h-px bg-[#E5E5E7] my-4" />
 
           {/* 下载按钮 */}
           <button
             onClick={handleDownload}
-            className="w-full h-11 rounded-lg bg-[#FE2C55] hover:bg-[#E91E45] text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+            className="w-full h-11 rounded-lg bg-[#0A84FF] hover:bg-[#0060D5] text-white text-sm font-medium flex items-center justify-center gap-2 transition-colors"
           >
             <Download className="h-4 w-4" />
             打开文件夹
@@ -329,16 +329,16 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
 
           {/* 相关推荐 */}
           <div className="mt-4 flex-1 overflow-hidden">
-            <h4 className="text-sm font-medium text-[#312E2A] mb-3">相关推荐</h4>
+            <h4 className="text-sm font-medium text-[#1D1D1F] mb-3">相关推荐</h4>
             <div className="space-y-2.5">
               {recommendations.length > 0 ? (
                 recommendations.map((rec) => (
                   <button
                     key={rec.id}
                     onClick={() => handleSelectRecommend(rec)}
-                    className="w-full flex items-center gap-3 p-1.5 rounded-lg hover:bg-[#F7F5F3] transition-colors text-left"
+                    className="w-full flex items-center gap-3 p-1.5 rounded-lg hover:bg-[#F2F2F4] transition-colors text-left"
                   >
-                    <div className="w-[70px] h-[70px] rounded-lg bg-[#F5F5F5] overflow-hidden flex-shrink-0">
+                    <div className="w-[70px] h-[70px] rounded-lg bg-[#F2F2F4] overflow-hidden flex-shrink-0">
                       {recommendCovers.get(rec.id) ? (
                         <img
                           src={`local://${recommendCovers.get(rec.id)}`}
@@ -347,20 +347,20 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Play className="h-5 w-5 text-[#B8B2AD]" />
+                          <Play className="h-5 w-5 text-[#A1A1A6]" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#312E2A] line-clamp-2 leading-tight">
+                      <p className="text-sm text-[#1D1D1F] line-clamp-2 leading-tight">
                         {rec.desc || rec.caption || '无标题'}
                       </p>
-                      <p className="text-xs text-[#B8B2AD] mt-1">@{rec.nickname}</p>
+                      <p className="text-xs text-[#A1A1A6] mt-1">@{rec.nickname}</p>
                     </div>
                   </button>
                 ))
               ) : (
-                <p className="text-xs text-[#B8B2AD] text-center py-4">暂无相关推荐</p>
+                <p className="text-xs text-[#A1A1A6] text-center py-4">暂无相关推荐</p>
               )}
             </div>
           </div>

@@ -17,7 +17,7 @@ export default function SettingsLayout() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header - 固定在顶部 */}
-      <header className="h-14 shrink-0 border-b border-border flex items-center px-6">
+      <header className="h-14 shrink-0 border-b border-border flex items-center px-6 bg-white">
         <Link to="/">
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -28,7 +28,7 @@ export default function SettingsLayout() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - 固定在左侧 */}
-        <aside className="w-56 shrink-0 border-r border-border overflow-y-auto">
+        <aside className="w-56 shrink-0 border-r border-border overflow-y-auto bg-white">
           <nav className="p-4 space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon
@@ -49,7 +49,7 @@ export default function SettingsLayout() {
         </aside>
 
         {/* Content - 只有这里滚动 */}
-        <ScrollArea className="flex-1 bg-muted/30">
+        <ScrollArea className="flex-1 bg-[#F5F5F7]">
           <main className="p-8 max-w-5xl">
             <Outlet />
           </main>

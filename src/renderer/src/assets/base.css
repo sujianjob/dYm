@@ -24,38 +24,38 @@
 }
 
 :root {
-  /* 抖音设计系统颜色 */
-  --accent-primary: #FE2C55;
-  --accent-secondary: #25F4EE;
-  --bg-primary: #FDFCFB;
+  /* Apple-inspired minimal palette */
+  --accent-primary: #0A84FF;
+  --accent-secondary: #5AC8FA;
+  --bg-primary: #F5F5F7;
   --bg-surface: #FFFFFF;
-  --bg-active: #FEE2E8;
-  --bg-hover: #F7F5F3;
-  --border-color: #EAE6E1;
-  --text-primary: #312E2A;
-  --text-secondary: #7A7570;
-  --text-muted: #B8B2AD;
+  --bg-active: #E8F0FE;
+  --bg-hover: #F2F2F4;
+  --border-color: #E5E5E7;
+  --text-primary: #1D1D1F;
+  --text-secondary: #6E6E73;
+  --text-muted: #A1A1A6;
 
   /* shadcn/ui 变量映射 */
-  --background: 40 20% 99%;
-  --foreground: 30 8% 17%;
+  --background: 240 10% 97%;
+  --foreground: 240 4% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 30 8% 17%;
+  --card-foreground: 240 4% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 30 8% 17%;
-  --primary: 348 99% 58%;
+  --popover-foreground: 240 4% 12%;
+  --primary: 209 100% 52%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 30 20% 97%;
-  --secondary-foreground: 30 8% 17%;
-  --muted: 30 12% 96%;
-  --muted-foreground: 30 5% 46%;
-  --accent: 348 95% 94%;
-  --accent-foreground: 348 99% 58%;
-  --destructive: 0 84% 60%;
+  --secondary: 240 6% 95%;
+  --secondary-foreground: 240 4% 16%;
+  --muted: 240 6% 95%;
+  --muted-foreground: 240 4% 44%;
+  --accent: 214 100% 95%;
+  --accent-foreground: 209 100% 52%;
+  --destructive: 4 100% 59%;
   --destructive-foreground: 0 0% 98%;
-  --border: 36 18% 90%;
-  --input: 36 18% 90%;
-  --ring: 348 99% 58%;
+  --border: 240 6% 90%;
+  --input: 240 6% 90%;
+  --ring: 209 100% 52%;
   --radius: 0.75rem;
 }
 
@@ -75,6 +75,8 @@ body {
     Inter,
     -apple-system,
     BlinkMacSystemFont,
+    'SF Pro Text',
+    'SF Pro Display',
     'Segoe UI',
     Roboto,
     Oxygen,

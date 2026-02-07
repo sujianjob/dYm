@@ -216,36 +216,36 @@ export default function HomePage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
-        <h1 className="text-xl font-semibold text-[#312E2A]">视频库</h1>
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
+        <h1 className="text-xl font-semibold text-[#1D1D1F]">视频库</h1>
         <div className="flex items-center gap-4">
           {/* Search Box */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#B8B2AD]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1A6]" />
             <input
               type="text"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
               placeholder="搜索视频..."
-              className="h-10 w-[280px] pl-10 pr-4 rounded-lg border border-[#EAE6E1] bg-white text-sm placeholder:text-[#B8B2AD] focus:outline-none focus:ring-2 focus:ring-[#FE2C55]/20 focus:border-[#FE2C55]"
+              className="h-10 w-[280px] pl-10 pr-4 rounded-lg border border-[#E5E5E7] bg-white text-sm placeholder:text-[#A1A1A6] focus:outline-none focus:ring-2 focus:ring-[#0A84FF]/20 focus:border-[#0A84FF]"
             />
           </div>
         </div>
       </header>
 
       {/* Filter Bar */}
-      <div className="h-[52px] flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
+      <div className="h-[52px] flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
         <div className="flex items-center gap-3">
-          <span className="text-[13px] text-[#7A7570]">筛选:</span>
+          <span className="text-[13px] text-[#6E6E73]">筛选:</span>
 
           {/* Author Filter */}
           <div className="relative" ref={authorDropdownRef}>
             <button
               onClick={() => setShowAuthorDropdown(!showAuthorDropdown)}
-              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#EAE6E1] bg-white text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors"
+              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-white text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors"
             >
               <span>{selectedAuthor?.nickname || '全部作者'}</span>
-              <ChevronDown className={`h-4 w-4 text-[#7A7570] transition-transform ${showAuthorDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 text-[#6E6E73] transition-transform ${showAuthorDropdown ? 'rotate-180' : ''}`} />
             </button>
             {selectedSecUid && (
               <button
@@ -253,18 +253,18 @@ export default function HomePage() {
                   e.stopPropagation()
                   setSelectedSecUid('')
                 }}
-                className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#FE2C55] text-white"
+                className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#0A84FF] text-white"
               >
                 <X className="h-3 w-3" />
               </button>
             )}
             {/* Author Dropdown */}
             {showAuthorDropdown && (
-              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-[#EAE6E1] rounded-lg shadow-lg z-50 overflow-hidden">
+              <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-[#E5E5E7] rounded-lg shadow-md z-50 overflow-hidden">
                 {/* Search */}
-                <div className="p-2 border-b border-[#EAE6E1]">
+                <div className="p-2 border-b border-[#E5E5E7]">
                   <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#B8B2AD]" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1A6]" />
                     <input
                       ref={authorSearchInputRef}
                       type="text"
@@ -275,7 +275,7 @@ export default function HomePage() {
                         setAuthorSearch(value)
                       }}
                       placeholder="搜索作者..."
-                      className="w-full h-8 pl-7 pr-2 rounded-md bg-[#F7F5F3] text-sm text-[#312E2A] placeholder:text-[#B8B2AD] focus:outline-none focus:ring-1 focus:ring-[#FE2C55]"
+                      className="w-full h-8 pl-7 pr-2 rounded-md bg-[#F2F2F4] text-sm text-[#1D1D1F] placeholder:text-[#A1A1A6] focus:outline-none focus:ring-1 focus:ring-[#0A84FF]"
                       autoFocus
                     />
                   </div>
@@ -291,7 +291,7 @@ export default function HomePage() {
                         authorSearchInputRef.current.value = ''
                       }
                     }}
-                    className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F7F5F3] transition-colors ${!selectedSecUid ? 'bg-[#FEE2E8] text-[#FE2C55]' : 'text-[#312E2A]'}`}
+                    className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F2F2F4] transition-colors ${!selectedSecUid ? 'bg-[#E8F0FE] text-[#0A84FF]' : 'text-[#1D1D1F]'}`}
                   >
                     全部作者
                   </button>
@@ -306,13 +306,13 @@ export default function HomePage() {
                           authorSearchInputRef.current.value = ''
                         }
                       }}
-                      className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F7F5F3] transition-colors ${selectedSecUid === author.sec_uid ? 'bg-[#FEE2E8] text-[#FE2C55]' : 'text-[#312E2A]'}`}
+                      className={`w-full h-10 px-3 flex items-center gap-2 text-sm hover:bg-[#F2F2F4] transition-colors ${selectedSecUid === author.sec_uid ? 'bg-[#E8F0FE] text-[#0A84FF]' : 'text-[#1D1D1F]'}`}
                     >
                       <span className="truncate">{author.nickname}</span>
                     </button>
                   ))}
                   {filteredAuthors.length === 0 && (
-                    <div className="py-4 text-center text-sm text-[#B8B2AD]">
+                    <div className="py-4 text-center text-sm text-[#A1A1A6]">
                       未找到匹配作者
                     </div>
                   )}
@@ -325,14 +325,14 @@ export default function HomePage() {
           <div className="relative">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#EAE6E1] bg-white text-sm text-[#312E2A] hover:bg-[#F7F5F3] transition-colors"
+              className="h-8 px-3 flex items-center gap-2 rounded-md border border-[#E5E5E7] bg-white text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors"
             >
-              <Tag className="h-4 w-4 text-[#7A7570]" />
+              <Tag className="h-4 w-4 text-[#6E6E73]" />
               <span>标签筛选</span>
-              <ChevronDown className="h-4 w-4 text-[#7A7570]" />
+              <ChevronDown className="h-4 w-4 text-[#6E6E73]" />
             </button>
             {selectedTags.length > 0 && (
-              <span className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#FE2C55] text-white text-xs">
+              <span className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#0A84FF] text-white text-xs">
                 {selectedTags.length}
               </span>
             )}
@@ -343,7 +343,7 @@ export default function HomePage() {
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="text-[#7A7570] hover:text-[#312E2A]"
+              className="text-[#6E6E73] hover:text-[#1D1D1F]"
             >
               清除筛选
             </Button>
@@ -351,21 +351,21 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-[13px] text-[#B8B2AD]">共 {total.toLocaleString()} 个视频</span>
+          <span className="text-[13px] text-[#A1A1A6]">共 {total.toLocaleString()} 个视频</span>
         </div>
       </div>
 
       {/* Extended Filter Panel */}
       {showFilters && (
-        <div className="px-6 py-4 border-b border-[#EAE6E1] bg-white space-y-4">
+        <div className="px-6 py-4 border-b border-[#E5E5E7] bg-white space-y-4">
           {/* Sexy Level Filter */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 min-w-[100px]">
               <Flame className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-medium text-[#312E2A]">内容分级</span>
+              <span className="text-sm font-medium text-[#1D1D1F]">内容分级</span>
             </div>
             <div className="flex-1 max-w-md flex items-center gap-4">
-              <span className="text-sm text-[#7A7570] w-6">{sexyLevelRange[0]}</span>
+              <span className="text-sm text-[#6E6E73] w-6">{sexyLevelRange[0]}</span>
               <Slider
                 value={sexyLevelRange}
                 onValueChange={(v) => setSexyLevelRange(v as [number, number])}
@@ -374,14 +374,14 @@ export default function HomePage() {
                 step={1}
                 className="flex-1"
               />
-              <span className="text-sm text-[#7A7570] w-6">{sexyLevelRange[1]}</span>
+              <span className="text-sm text-[#6E6E73] w-6">{sexyLevelRange[1]}</span>
             </div>
-            <label className="flex items-center gap-2 text-sm text-[#7A7570]">
+            <label className="flex items-center gap-2 text-sm text-[#6E6E73]">
               <input
                 type="checkbox"
                 checked={analyzedOnly}
                 onChange={(e) => setAnalyzedOnly(e.target.checked)}
-                className="rounded border-[#EAE6E1]"
+                className="rounded border-[#E5E5E7]"
               />
               仅显示已分析
             </label>
@@ -392,25 +392,25 @@ export default function HomePage() {
             <div className="flex items-start gap-4">
               <div className="flex items-center gap-2 min-w-[100px] pt-1">
                 <Tag className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium text-[#312E2A]">标签筛选</span>
+                <span className="text-sm font-medium text-[#1D1D1F]">标签筛选</span>
               </div>
               <div className="flex-1">
                 {/* 搜索框 + 展开/收起按钮 */}
                 <div className="flex items-center gap-2 mb-2">
                   <div className="relative flex-1 max-w-[200px]">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#B8B2AD]" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1A6]" />
                     <input
                       type="text"
                       value={tagSearch}
                       onChange={(e) => setTagSearch(e.target.value)}
                       placeholder="搜索标签..."
-                      className="w-full h-7 pl-7 pr-2 rounded-md bg-[#F7F5F3] text-xs text-[#312E2A] placeholder:text-[#B8B2AD] focus:outline-none focus:ring-1 focus:ring-[#FE2C55]"
+                      className="w-full h-7 pl-7 pr-2 rounded-md bg-[#F2F2F4] text-xs text-[#1D1D1F] placeholder:text-[#A1A1A6] focus:outline-none focus:ring-1 focus:ring-[#0A84FF]"
                     />
                   </div>
                   {allTags.length > 20 && !tagSearch && (
                     <button
                       onClick={() => setShowAllTags(!showAllTags)}
-                      className="flex items-center gap-1 text-xs text-[#7A7570] hover:text-[#FE2C55] transition-colors"
+                      className="flex items-center gap-1 text-xs text-[#6E6E73] hover:text-[#0A84FF] transition-colors"
                     >
                       {showAllTags ? (
                         <>
@@ -428,7 +428,7 @@ export default function HomePage() {
                   {selectedTags.length > 0 && (
                     <button
                       onClick={() => setSelectedTags([])}
-                      className="flex items-center gap-1 text-xs text-[#FE2C55] hover:text-[#E91E45] transition-colors"
+                      className="flex items-center gap-1 text-xs text-[#0A84FF] hover:text-[#0060D5] transition-colors"
                     >
                       <X className="h-3 w-3" />
                       清除 ({selectedTags.length})
@@ -450,14 +450,14 @@ export default function HomePage() {
                         <Badge
                           key={tag}
                           variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                          className="cursor-pointer hover:bg-[#FE2C55]/80 transition-colors"
+                          className="cursor-pointer hover:bg-[#0A84FF]/80 transition-colors"
                           onClick={() => toggleTag(tag)}
                         >
                           {tag}
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-[#B8B2AD]">未找到匹配标签</span>
+                      <span className="text-xs text-[#A1A1A6]">未找到匹配标签</span>
                     )
                   })()}
                 </div>
@@ -471,15 +471,15 @@ export default function HomePage() {
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FE2C55]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0A84FF]" />
           </div>
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="rounded-full bg-[#F7F5F3] p-6 mb-4">
-              <Video className="h-12 w-12 text-[#B8B2AD]" />
+            <div className="rounded-full bg-[#F2F2F4] p-6 mb-4">
+              <Video className="h-12 w-12 text-[#A1A1A6]" />
             </div>
-            <h2 className="text-xl font-semibold text-[#312E2A] mb-2">暂无视频</h2>
-            <p className="text-[#7A7570] mb-4">添加用户并下载视频后，将在这里显示</p>
+            <h2 className="text-xl font-semibold text-[#1D1D1F] mb-2">暂无视频</h2>
+            <p className="text-[#6E6E73] mb-4">添加用户并下载视频后，将在这里显示</p>
           </div>
         ) : (
           <>
@@ -489,10 +489,10 @@ export default function HomePage() {
                 <ContextMenu key={post.id}>
                   <ContextMenuTrigger asChild>
                     <Card
-                      className="overflow-hidden cursor-pointer hover:shadow-lg transition-all group border-[#EAE6E1] bg-white"
+                      className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow group border-[#E5E5E7] bg-white"
                       onClick={() => handlePostClick(post)}
                     >
-                      <div className="aspect-[9/16] bg-[#F7F5F3] relative">
+                      <div className="aspect-[9/16] bg-[#F2F2F4] relative">
                         {getCoverUrl(post) ? (
                           <img
                             src={getCoverUrl(post)!}
@@ -502,9 +502,9 @@ export default function HomePage() {
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             {isImagePost(post) ? (
-                              <Images className="h-12 w-12 text-[#B8B2AD]" />
+                              <Images className="h-12 w-12 text-[#A1A1A6]" />
                             ) : (
-                              <Video className="h-12 w-12 text-[#B8B2AD]" />
+                              <Video className="h-12 w-12 text-[#A1A1A6]" />
                             )}
                           </div>
                         )}
@@ -528,10 +528,10 @@ export default function HomePage() {
                         )}
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-medium text-[#312E2A] line-clamp-2">
+                        <p className="text-sm font-medium text-[#1D1D1F] line-clamp-2">
                           {post.desc || post.caption || '无标题'}
                         </p>
-                        <p className="text-xs text-[#7A7570] mt-1">@{post.nickname}</p>
+                        <p className="text-xs text-[#6E6E73] mt-1">@{post.nickname}</p>
                         {post.analysis_tags && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {parseTags(post.analysis_tags)
@@ -540,7 +540,7 @@ export default function HomePage() {
                                 <Badge
                                   key={tag}
                                   variant="secondary"
-                                  className="text-xs px-1.5 py-0 bg-[#F7F5F3] text-[#7A7570]"
+                                  className="text-xs px-1.5 py-0 bg-[#F2F2F4] text-[#6E6E73]"
                                 >
                                   {tag}
                                 </Badge>
@@ -548,7 +548,7 @@ export default function HomePage() {
                             {parseTags(post.analysis_tags).length > 3 && (
                               <Badge
                                 variant="outline"
-                                className="text-xs px-1.5 py-0 border-[#EAE6E1] text-[#B8B2AD]"
+                                className="text-xs px-1.5 py-0 border-[#E5E5E7] text-[#A1A1A6]"
                               >
                                 +{parseTags(post.analysis_tags).length - 3}
                               </Badge>
@@ -582,10 +582,10 @@ export default function HomePage() {
             {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
               {loadingMore && (
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#FE2C55]" />
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0A84FF]" />
               )}
               {!hasMore && posts.length > 0 && (
-                <span className="text-sm text-[#B8B2AD]">已加载全部 {total} 个作品</span>
+                <span className="text-sm text-[#A1A1A6]">已加载全部 {total} 个作品</span>
               )}
             </div>
           </>

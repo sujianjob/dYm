@@ -20,10 +20,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 
 const statusConfig = {
-  pending: { label: '待执行', icon: Clock, color: '#7A7570', bg: '#F7F5F3' },
-  running: { label: '执行中', icon: Loader2, color: '#FE2C55', bg: '#FEE2E8' },
-  completed: { label: '已完成', icon: CheckCircle2, color: '#22C55E', bg: '#DCFCE7' },
-  failed: { label: '失败', icon: XCircle, color: '#EF4444', bg: '#FEE2E2' }
+  pending: { label: '待执行', icon: Clock, color: '#6E6E73', bg: '#F2F2F4' },
+  running: { label: '执行中', icon: Loader2, color: '#0A84FF', bg: '#E8F0FE' },
+  completed: { label: '已完成', icon: CheckCircle2, color: '#22C55E', bg: '#E6F7ED' },
+  failed: { label: '失败', icon: XCircle, color: '#EF4444', bg: '#FFE5E5' }
 }
 
 export default function TaskDetailPage() {
@@ -159,7 +159,7 @@ export default function TaskDetailPage() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#B8B2AD]" />
+        <Loader2 className="h-8 w-8 animate-spin text-[#A1A1A6]" />
       </div>
     )
   }
@@ -176,16 +176,16 @@ export default function TaskDetailPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center gap-4 px-6 border-b border-[#EAE6E1] bg-white">
+      <header className="h-16 flex items-center gap-4 px-6 border-b border-[#E5E5E7] bg-white">
         <button
           onClick={() => navigate('/settings/download')}
-          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-[#F7F5F3] transition-colors"
+          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-[#F2F2F4] transition-colors"
         >
-          <ArrowLeft className="h-5 w-5 text-[#7A7570]" />
+          <ArrowLeft className="h-5 w-5 text-[#6E6E73]" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-[#312E2A] truncate">{task.name}</h1>
-          <p className="text-[13px] text-[#7A7570]">并发数: {task.concurrency}</p>
+          <h1 className="text-xl font-semibold text-[#1D1D1F] truncate">{task.name}</h1>
+          <p className="text-[13px] text-[#6E6E73]">并发数: {task.concurrency}</p>
         </div>
         <div
           className="h-8 px-3 flex items-center gap-1.5 rounded-full text-sm font-medium"
@@ -197,7 +197,7 @@ export default function TaskDetailPage() {
         {isRunning ? (
           <Button
             onClick={handleStopDownload}
-            className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+            className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
           >
             <Square className="h-4 w-4 mr-2" />
             停止下载
@@ -205,7 +205,7 @@ export default function TaskDetailPage() {
         ) : (
           <Button
             onClick={handleStartDownload}
-            className="bg-[#FE2C55] hover:bg-[#FE2C55]/90 text-white"
+            className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white"
           >
             <Play className="h-4 w-4 mr-2" />
             开始下载
@@ -217,49 +217,49 @@ export default function TaskDetailPage() {
       <div className="flex-1 overflow-auto p-6 space-y-5">
         {/* Stats Cards */}
         <div className="grid gap-4 grid-cols-4">
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F7F5F3] flex items-center justify-center">
-                <User className="h-6 w-6 text-[#7A7570]" />
+              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                <User className="h-6 w-6 text-[#6E6E73]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#312E2A]">{task.users.length}</p>
-                <p className="text-sm text-[#7A7570]">用户数</p>
+                <p className="text-2xl font-bold text-[#1D1D1F]">{task.users.length}</p>
+                <p className="text-sm text-[#6E6E73]">用户数</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F7F5F3] flex items-center justify-center">
-                <Video className="h-6 w-6 text-[#7A7570]" />
+              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                <Video className="h-6 w-6 text-[#6E6E73]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#312E2A]">{formatNumber(totalVideos)}</p>
-                <p className="text-sm text-[#7A7570]">视频总数</p>
+                <p className="text-2xl font-bold text-[#1D1D1F]">{formatNumber(totalVideos)}</p>
+                <p className="text-sm text-[#6E6E73]">视频总数</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F7F5F3] flex items-center justify-center">
-                <FileText className="h-6 w-6 text-[#7A7570]" />
+              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                <FileText className="h-6 w-6 text-[#6E6E73]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-[#312E2A]">
+                <p className="text-2xl font-bold text-[#1D1D1F]">
                   {totalDownloaded} / {totalVideos}
                 </p>
-                <p className="text-sm text-[#7A7570]">下载进度</p>
+                <p className="text-sm text-[#6E6E73]">下载进度</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5">
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-[#F7F5F3] flex items-center justify-center">
-                <Calendar className="h-6 w-6 text-[#7A7570]" />
+              <div className="h-12 w-12 rounded-full bg-[#F2F2F4] flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-[#6E6E73]" />
               </div>
               <div>
-                <p className="text-sm font-medium text-[#312E2A]">{formatDate(task.created_at)}</p>
-                <p className="text-sm text-[#7A7570]">创建时间</p>
+                <p className="text-sm font-medium text-[#1D1D1F]">{formatDate(task.created_at)}</p>
+                <p className="text-sm text-[#6E6E73]">创建时间</p>
               </div>
             </div>
           </div>
@@ -267,33 +267,33 @@ export default function TaskDetailPage() {
 
         {/* Download Progress */}
         {progress && isRunning && (
-          <div className="bg-white rounded-xl border border-[#EAE6E1] p-5 space-y-4">
+          <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-[#FEE2E8] flex items-center justify-center">
-                <Zap className="h-5 w-5 text-[#FE2C55] animate-pulse" />
+              <div className="h-10 w-10 rounded-full bg-[#E8F0FE] flex items-center justify-center">
+                <Zap className="h-5 w-5 text-[#0A84FF] animate-pulse" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-[#312E2A] truncate">{progress.message}</p>
-                <p className="text-sm text-[#7A7570]">
+                <p className="font-medium text-[#1D1D1F] truncate">{progress.message}</p>
+                <p className="text-sm text-[#6E6E73]">
                   用户 {progress.currentUserIndex}/{progress.totalUsers}
                   {progress.currentUser && ` · ${progress.currentUser}`}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-[#FE2C55]">{progress.downloadedPosts}</p>
-                <p className="text-xs text-[#7A7570]">已下载</p>
+                <p className="text-2xl font-bold text-[#0A84FF]">{progress.downloadedPosts}</p>
+                <p className="text-xs text-[#6E6E73]">已下载</p>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-[#7A7570]">下载进度</span>
-                <span className="font-medium text-[#312E2A]">
+                <span className="text-[#6E6E73]">下载进度</span>
+                <span className="font-medium text-[#1D1D1F]">
                   {progress.currentVideo}/{progress.totalVideos}
                 </span>
               </div>
-              <div className="h-2 bg-[#EAE6E1] rounded-full overflow-hidden">
+              <div className="h-2 bg-[#E5E5E7] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#FE2C55] rounded-full transition-all"
+                  className="h-full bg-[#0A84FF] rounded-full transition-all"
                   style={{
                     width: `${progress.totalVideos > 0 ? (progress.currentVideo / progress.totalVideos) * 100 : 0}%`
                   }}
@@ -304,18 +304,18 @@ export default function TaskDetailPage() {
         )}
 
         {/* Users List */}
-        <div className="bg-white rounded-xl border border-[#EAE6E1] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm overflow-hidden">
           {/* List Header */}
-          <div className="h-14 flex items-center justify-between px-5 border-b border-[#EAE6E1]">
+          <div className="h-14 flex items-center justify-between px-5 border-b border-[#E5E5E7]">
             <div className="flex items-center gap-3">
-              <span className="text-base font-semibold text-[#312E2A]">包含用户</span>
-              <span className="text-[13px] text-[#B8B2AD]">({task.users.length})</span>
+              <span className="text-base font-semibold text-[#1D1D1F]">包含用户</span>
+              <span className="text-[13px] text-[#A1A1A6]">({task.users.length})</span>
             </div>
-            <p className="text-[13px] text-[#7A7570]">此任务将下载以下用户的视频</p>
+            <p className="text-[13px] text-[#6E6E73]">此任务将下载以下用户的视频</p>
           </div>
 
           {/* Table Header */}
-          <div className="h-11 flex items-center px-5 bg-[#F7F5F3] text-[13px] font-medium text-[#7A7570]">
+          <div className="h-11 flex items-center px-5 bg-[#F2F2F4] text-[13px] font-medium text-[#6E6E73]">
             <div className="flex-1">用户</div>
             <div className="w-28 text-center">抖音号</div>
             <div className="w-24 text-center">粉丝</div>
@@ -325,12 +325,12 @@ export default function TaskDetailPage() {
 
           {/* Table Body */}
           {sortedUsers.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-[#7A7570]">
-              <div className="h-16 w-16 rounded-full bg-[#F7F5F3] flex items-center justify-center mb-4">
-                <User className="h-8 w-8 text-[#B8B2AD]" />
+            <div className="py-20 flex flex-col items-center justify-center text-[#6E6E73]">
+              <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                <User className="h-8 w-8 text-[#A1A1A6]" />
               </div>
               <p className="text-base font-medium">暂无用户</p>
-              <p className="text-sm mt-1 text-[#B8B2AD]">此任务中没有添加用户</p>
+              <p className="text-sm mt-1 text-[#A1A1A6]">此任务中没有添加用户</p>
             </div>
           ) : (
             sortedUsers.map((user) => {
@@ -338,61 +338,61 @@ export default function TaskDetailPage() {
               return (
                 <div
                   key={user.id}
-                  className={`h-[72px] flex items-center px-5 border-b border-[#EAE6E1] transition-colors ${
+                  className={`h-[72px] flex items-center px-5 border-b border-[#E5E5E7] transition-colors ${
                     isActiveUser
-                      ? 'bg-[#FEE2E8]/30 border-l-2 border-l-[#FE2C55]'
-                      : 'hover:bg-[#F7F5F3]/50'
+                      ? 'bg-[#E8F0FE]/30 border-l-2 border-l-[#0A84FF]'
+                      : 'hover:bg-[#F2F2F4]/50'
                   }`}
                 >
                   <div className="flex-1 flex items-center gap-3">
                     <div className="relative">
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={user.avatar} className="object-cover" />
-                        <AvatarFallback className="bg-[#FEE2E8] text-[#FE2C55]">
+                        <AvatarFallback className="bg-[#E8F0FE] text-[#0A84FF]">
                           {user.nickname?.charAt(0).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
                       {isActiveUser && (
-                        <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-[#FE2C55] flex items-center justify-center">
+                        <div className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full bg-[#0A84FF] flex items-center justify-center">
                           <Loader2 className="h-2.5 w-2.5 text-white animate-spin" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-[#312E2A] truncate">{user.nickname}</p>
+                        <p className="font-medium text-[#1D1D1F] truncate">{user.nickname}</p>
                         {isActiveUser && (
-                          <Badge className="text-xs px-1.5 py-0 bg-[#FE2C55] text-white">
+                          <Badge className="text-xs px-1.5 py-0 bg-[#0A84FF] text-white">
                             下载中
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-[#B8B2AD] truncate max-w-[180px]">
+                      <p className="text-xs text-[#A1A1A6] truncate max-w-[180px]">
                         {user.signature || '暂无签名'}
                       </p>
                     </div>
                   </div>
                   <div className="w-28 text-center">
-                    <span className="text-sm text-[#7A7570] font-mono">
+                    <span className="text-sm text-[#6E6E73] font-mono">
                       @{user.unique_id || user.short_id || '-'}
                     </span>
                   </div>
                   <div className="w-24 text-center">
-                    <Badge variant="outline" className="font-medium border-[#EAE6E1] text-[#7A7570]">
+                    <Badge variant="outline" className="font-medium border-[#E5E5E7] text-[#6E6E73]">
                       {formatNumber(user.follower_count)}
                     </Badge>
                   </div>
                   <div className="w-24 text-center">
-                    <span className="font-medium text-[#312E2A]">{user.aweme_count}</span>
+                    <span className="font-medium text-[#1D1D1F]">{user.aweme_count}</span>
                   </div>
                   <div className="w-32 flex flex-col items-center gap-1">
-                    <span className="text-sm font-medium text-[#312E2A]">
+                    <span className="text-sm font-medium text-[#1D1D1F]">
                       {user.downloaded_count} / {user.aweme_count}
                     </span>
-                    <div className="w-20 h-1.5 bg-[#EAE6E1] rounded-full overflow-hidden">
+                    <div className="w-20 h-1.5 bg-[#E5E5E7] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
-                          isActiveUser ? 'bg-[#FE2C55]' : 'bg-[#312E2A]'
+                          isActiveUser ? 'bg-[#0A84FF]' : 'bg-[#1D1D1F]'
                         }`}
                         style={{
                           width: `${user.aweme_count > 0 ? (user.downloaded_count / user.aweme_count) * 100 : 0}%`

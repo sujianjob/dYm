@@ -71,10 +71,10 @@ export default function LogsPage() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-[#EAE6E1] bg-white">
+      <header className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-[#312E2A]">自动同步日志</h1>
-          <span className="text-sm text-[#B8B2AD]">({filteredLogs.length})</span>
+          <h1 className="text-xl font-semibold text-[#1D1D1F]">自动同步日志</h1>
+          <span className="text-sm text-[#A1A1A6]">({filteredLogs.length})</span>
         </div>
         <Button
           variant="outline"
@@ -84,7 +84,7 @@ export default function LogsPage() {
             setLogs([])
           }}
           disabled={logs.length === 0}
-          className="border-[#EAE6E1] text-[#7A7570]"
+          className="border-[#E5E5E7] text-[#6E6E73]"
         >
           <Trash2 className="h-4 w-4 mr-2" />
           清空日志
@@ -93,9 +93,9 @@ export default function LogsPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-hidden p-6">
-        <div className="h-full bg-white rounded-xl border border-[#EAE6E1] flex flex-col overflow-hidden">
+        <div className="h-full bg-white rounded-2xl border border-[#E5E5E7] shadow-sm flex flex-col overflow-hidden">
           {/* Filter Tabs */}
-          <div className="h-12 flex items-center gap-2 px-5 border-b border-[#EAE6E1]">
+          <div className="h-12 flex items-center gap-2 px-5 border-b border-[#E5E5E7]">
             {[
               { key: 'all', label: '全部' },
               { key: 'user', label: '用户同步' },
@@ -107,8 +107,8 @@ export default function LogsPage() {
                 onClick={() => setFilter(item.key as LogFilter)}
                 className={`h-8 px-3 rounded-lg text-sm transition-colors ${
                   filter === item.key
-                    ? 'bg-[#FEE2E8] text-[#FE2C55] font-medium'
-                    : 'text-[#7A7570] hover:bg-[#F7F5F3]'
+                    ? 'bg-[#E8F0FE] text-[#0A84FF] font-medium'
+                    : 'text-[#6E6E73] hover:bg-[#F2F2F4]'
                 }`}
               >
                 {item.label}
@@ -120,31 +120,31 @@ export default function LogsPage() {
           <div className="flex-1 overflow-auto">
             {filteredLogs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center">
-                <div className="h-16 w-16 rounded-full bg-[#F7F5F3] flex items-center justify-center mb-4">
-                  <Clock className="h-8 w-8 text-[#B8B2AD]" />
+                <div className="h-16 w-16 rounded-full bg-[#F2F2F4] flex items-center justify-center mb-4">
+                  <Clock className="h-8 w-8 text-[#A1A1A6]" />
                 </div>
-                <p className="text-base font-medium text-[#312E2A]">暂无日志</p>
-                <p className="text-sm text-[#7A7570] mt-1">启用自动同步后，执行日志将显示在这里</p>
+                <p className="text-base font-medium text-[#1D1D1F]">暂无日志</p>
+                <p className="text-sm text-[#6E6E73] mt-1">启用自动同步后，执行日志将显示在这里</p>
               </div>
             ) : (
-              <div className="divide-y divide-[#EAE6E1]">
+              <div className="divide-y divide-[#E5E5E7]">
                 {filteredLogs.map((log, index) => (
                   <div
                     key={`${log.timestamp}-${index}`}
-                    className="flex items-start gap-4 px-5 py-3 hover:bg-[#F7F5F3]/50 transition-colors"
+                    className="flex items-start gap-4 px-5 py-3 hover:bg-[#F2F2F4]/50 transition-colors"
                   >
                     <div className="flex-shrink-0 mt-0.5">{getLevelIcon(log.level)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm text-[#312E2A]">{log.message}</span>
+                        <span className="text-sm text-[#1D1D1F]">{log.message}</span>
                         {log.targetName && (
-                          <span className="text-xs text-[#7A7570] bg-[#F7F5F3] px-2 py-0.5 rounded font-medium">
+                          <span className="text-xs text-[#6E6E73] bg-[#F2F2F4] px-2 py-0.5 rounded font-medium">
                             {log.targetName}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-[#B8B2AD]">{formatTime(log.timestamp)}</span>
+                        <span className="text-xs text-[#A1A1A6]">{formatTime(log.timestamp)}</span>
                         {getTypeBadge(log.type)}
                       </div>
                     </div>
