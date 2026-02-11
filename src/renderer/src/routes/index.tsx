@@ -1,5 +1,6 @@
 import { createHashRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/AppLayout'
+import DashboardPage from '@/pages/DashboardPage'
 import HomePage from '@/pages/HomePage'
 import UsersPage from '@/pages/settings/UsersPage'
 import DownloadPage from '@/pages/settings/DownloadPage'
@@ -16,6 +17,10 @@ export const router = createHashRouter([
     children: [
       {
         index: true,
+        element: <DashboardPage />
+      },
+      {
+        path: 'browse',
         element: <HomePage />
       },
       {

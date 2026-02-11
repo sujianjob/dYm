@@ -345,3 +345,7 @@ export function getAnyUserSyncing(): number | null {
   const entries = Array.from(runningSyncs.entries())
   return entries.length > 0 ? entries[0][0] : null
 }
+
+export function getAllSyncingUserIds(): number[] {
+  return Array.from(runningSyncs.keys())
+}

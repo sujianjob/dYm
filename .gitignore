@@ -11,3 +11,9 @@ out
 /blob-report/
 /playwright/.cache/
 .ace-tool/
+
+# Build info
+*.tsbuildinfo
+
+# Downloaded data
+packages/server/data/

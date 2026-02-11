@@ -36,7 +36,12 @@ import {
   type PostFilters,
   deletePost,
   getPostsByUserId,
-  deletePostsByUserId
+  deletePostsByUserId,
+  getDashboardOverview,
+  getDownloadTrend,
+  getUserVideoDistribution,
+  getTopTags,
+  getContentLevelDistribution
 } from './database'
 import { fetchDouyinCookie, refreshDouyinCookieSilent, isCookieRefreshing } from './services/cookie'
 import {
@@ -51,7 +56,7 @@ import {
 import { startDownloadTask, stopDownloadTask, isTaskRunning } from './services/downloader'
 import { startAnalysis, stopAnalysis, isAnalysisRunning } from './services/analyzer'
 import { initUpdater, registerUpdaterHandlers } from './services/updater'
-import { startUserSync, stopUserSync, isUserSyncing, getAnyUserSyncing } from './services/syncer'
+import { startUserSync, stopUserSync, isUserSyncing, getAnyUserSyncing, getAllSyncingUserIds } from './services/syncer'
 import { initScheduler, stopScheduler, scheduleUser, unscheduleUser, scheduleTask, unscheduleTask, validateCronExpression, getSchedulerLogs, clearSchedulerLogs } from './services/scheduler'
 import {
   getUnanalyzedPostsCount,
@@ -794,6 +799,7 @@ app.whenReady().then(() => {
   ipcMain.handle('sync:stop', (_event, userId: number) => stopUserSync(userId))
   ipcMain.handle('sync:isRunning', (_event, userId: number) => isUserSyncing(userId))
   ipcMain.handle('sync:getAnySyncing', () => getAnyUserSyncing())
+  ipcMain.handle('sync:getAllSyncing', () => getAllSyncingUserIds())
   ipcMain.handle('sync:validateCron', (_event, expression: string) => validateCronExpression(expression))
   ipcMain.handle('sync:updateUserSchedule', (_event, userId: number) => {
     const user = getUserById(userId)
@@ -937,6 +943,22 @@ app.whenReady().then(() => {
     shell.openPath(app.getPath('userData'))
   })
 
+  // Open URL in app browser (reuse douyin login session)
+  ipcMain.handle('system:openInAppBrowser', (_event, url: string, title?: string) => {
+    const partition = 'persist:douyin-login'
+    const win = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      title: title || '抖音',
+      webPreferences: {
+        partition,
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    })
+    win.loadURL(url)
+  })
+
   // Download path IPC handler
   ipcMain.handle('settings:getDefaultDownloadPath', () => {
     return join(app.getPath('userData'), 'Download', 'post')
@@ -1073,6 +1095,13 @@ app.whenReady().then(() => {
   ipcMain.handle('migration:getCount', (_event, oldPath: string) => {
     return getMigrationCount(oldPath)
   })
+
+  // Dashboard
+  ipcMain.handle('dashboard:getOverview', () => getDashboardOverview())
+  ipcMain.handle('dashboard:getDownloadTrend', (_event, days?: number) => getDownloadTrend(days))
+  ipcMain.handle('dashboard:getUserDistribution', (_event, limit?: number) => getUserVideoDistribution(limit))
+  ipcMain.handle('dashboard:getTopTags', (_event, limit?: number) => getTopTags(limit))
+  ipcMain.handle('dashboard:getContentLevelDistribution', () => getContentLevelDistribution())
 
   // 创建托盘图标
   createTray()

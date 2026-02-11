@@ -80,6 +80,7 @@ const syncAPI = {
   stop: (userId: number): Promise<void> => ipcRenderer.invoke('sync:stop', userId),
   isRunning: (userId: number): Promise<boolean> => ipcRenderer.invoke('sync:isRunning', userId),
   getAnySyncing: (): Promise<number | null> => ipcRenderer.invoke('sync:getAnySyncing'),
+  getAllSyncing: (): Promise<number[]> => ipcRenderer.invoke('sync:getAllSyncing'),
   validateCron: (expression: string): Promise<boolean> => ipcRenderer.invoke('sync:validateCron', expression),
   updateUserSchedule: (userId: number): Promise<void> => ipcRenderer.invoke('sync:updateUserSchedule', userId),
   onProgress: (callback: (progress: SyncProgress) => void): (() => void) => {
@@ -142,7 +143,8 @@ const videoAPI = {
 const systemAPI = {
   getResourceUsage: (): Promise<SystemResourceInfo> => ipcRenderer.invoke('system:getResourceUsage'),
   openDirectoryDialog: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDirectory'),
-  openDataDirectory: (): Promise<void> => ipcRenderer.invoke('system:openDataDirectory')
+  openDataDirectory: (): Promise<void> => ipcRenderer.invoke('system:openDataDirectory'),
+  openInAppBrowser: (url: string, title?: string): Promise<void> => ipcRenderer.invoke('system:openInAppBrowser', url, title)
 }
 
 const migrationAPI = {
@@ -190,6 +192,18 @@ const filesAPI = {
     ipcRenderer.invoke('files:deleteUserFiles', userId, secUid)
 }
 
+const dashboardAPI = {
+  getOverview: (): Promise<DashboardOverview> => ipcRenderer.invoke('dashboard:getOverview'),
+  getDownloadTrend: (days?: number): Promise<TrendPoint[]> =>
+    ipcRenderer.invoke('dashboard:getDownloadTrend', days),
+  getUserDistribution: (limit?: number): Promise<UserDistItem[]> =>
+    ipcRenderer.invoke('dashboard:getUserDistribution', limit),
+  getTopTags: (limit?: number): Promise<TagStatItem[]> =>
+    ipcRenderer.invoke('dashboard:getTopTags', limit),
+  getContentLevelDistribution: (): Promise<LevelDistItem[]> =>
+    ipcRenderer.invoke('dashboard:getContentLevelDistribution')
+}
+
 const api = {
   db: dbAPI,
   settings: settingsAPI,
@@ -208,7 +222,8 @@ const api = {
   updater: updaterAPI,
   migration: migrationAPI,
   clipboard: clipboardAPI,
-  files: filesAPI
+  files: filesAPI,
+  dashboard: dashboardAPI
 }
 
 if (process.contextIsolated) {

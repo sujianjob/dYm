@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Download, Home, Users, Sparkles, Settings, ScrollText, HardDrive } from 'lucide-react'
+import { Download, Home, Users, Sparkles, Settings, ScrollText, HardDrive, LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 const navItems = [
-  { path: '/', label: '首页', icon: Home },
+  { path: '/', label: '数据概览', icon: Home },
+  { path: '/browse', label: '视频浏览', icon: LayoutGrid },
   { path: '/users', label: '用户管理', icon: Users },
   { path: '/download', label: '下载任务', icon: Download },
   { path: '/files', label: '文件管理', icon: HardDrive },

@@ -411,7 +411,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex-1">
                     {/* 搜索框 + 展开/收起按钮 */}
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2" style={{ marginBottom: 12 }}>
                       <div className="relative flex-1 max-w-[200px]">
                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1A6]" />
                         <input
@@ -467,7 +467,7 @@ export default function HomePage() {
                             <Badge
                               key={tag}
                               variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                              className="cursor-pointer hover:bg-[#0A84FF]/80 transition-colors"
+                              className={`cursor-pointer transition-colors ${selectedTags.includes(tag) ? 'hover:bg-[#0A84FF]/80' : 'hover:bg-[#F2F2F4] hover:border-[#C7C7CC]'}`}
                               onClick={() => toggleTag(tag)}
                             >
                               {tag}

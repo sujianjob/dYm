@@ -180,6 +180,7 @@ declare global {
     stop: (userId: number) => Promise<void>
     isRunning: (userId: number) => Promise<boolean>
     getAnySyncing: () => Promise<number | null>
+    getAllSyncing: () => Promise<number[]>
     validateCron: (expression: string) => Promise<boolean>
     updateUserSchedule: (userId: number) => Promise<void>
     onProgress: (callback: (progress: SyncProgress) => void) => () => void
@@ -322,6 +323,7 @@ declare global {
     getResourceUsage: () => Promise<SystemResourceInfo>
     openDirectoryDialog: () => Promise<string | null>
     openDataDirectory: () => Promise<void>
+    openInAppBrowser: (url: string, title?: string) => Promise<void>
   }
 
   interface UpdateInfo {
@@ -368,6 +370,41 @@ declare global {
     deleteUserFiles: (userId: number, secUid: string) => Promise<number>
   }
 
+  interface DashboardOverview {
+    totalUsers: number
+    totalPosts: number
+    analyzedPosts: number
+    todayDownloads: number
+  }
+
+  interface TrendPoint {
+    date: string
+    count: number
+  }
+
+  interface UserDistItem {
+    nickname: string
+    count: number
+  }
+
+  interface TagStatItem {
+    tag: string
+    count: number
+  }
+
+  interface LevelDistItem {
+    level: number
+    count: number
+  }
+
+  interface DashboardAPI {
+    getOverview: () => Promise<DashboardOverview>
+    getDownloadTrend: (days?: number) => Promise<TrendPoint[]>
+    getUserDistribution: (limit?: number) => Promise<UserDistItem[]>
+    getTopTags: (limit?: number) => Promise<TagStatItem[]>
+    getContentLevelDistribution: () => Promise<LevelDistItem[]>
+  }
+
   interface API {
     db: DatabaseAPI
     settings: SettingsAPI
@@ -387,6 +424,7 @@ declare global {
     migration: MigrationAPI
     clipboard: ClipboardAPI
     files: FilesAPI
+    dashboard: DashboardAPI
   }
 
   interface Window {

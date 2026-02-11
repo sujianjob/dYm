@@ -91,8 +91,8 @@ export default function UsersPage() {
   const [batchLoading, setBatchLoading] = useState(false)
   const [batchCronValid, setBatchCronValid] = useState(true)
 
-  const [syncingUserId, setSyncingUserId] = useState<number | null>(null)
-  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
+  const [syncingUserIds, setSyncingUserIds] = useState<Set<number>>(new Set())
+  const [syncProgressMap, setSyncProgressMap] = useState<Map<number, SyncProgress>>(new Map())
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; nickname: string } | null>(null)
   const [deleteFiles, setDeleteFiles] = useState(false)
@@ -100,20 +100,30 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers()
-    // 检查是否有用户正在同步
-    window.api.sync.getAnySyncing().then(setSyncingUserId)
+    window.api.sync.getAllSyncing().then((ids) => setSyncingUserIds(new Set(ids)))
   }, [])
 
   useEffect(() => {
     const unsubscribe = window.api.sync.onProgress((progress) => {
-      setSyncProgress(progress)
+      const uid = progress.userId
       if (
         progress.status === 'completed' ||
         progress.status === 'failed' ||
         progress.status === 'stopped'
       ) {
-        setSyncingUserId(null)
+        setSyncingUserIds((prev) => {
+          const next = new Set(prev)
+          next.delete(uid)
+          return next
+        })
+        setSyncProgressMap((prev) => {
+          const next = new Map(prev)
+          next.delete(uid)
+          return next
+        })
         loadUsers()
+      } else {
+        setSyncProgressMap((prev) => new Map(prev).set(uid, progress))
       }
     })
     return unsubscribe
@@ -431,15 +441,16 @@ export default function UsersPage() {
   }
 
   const handleStartSync = async (user: DbUser) => {
-    if (syncingUserId !== null) {
-      toast.error('已有用户正在同步中')
-      return
-    }
+    if (syncingUserIds.has(user.id)) return
     try {
-      setSyncingUserId(user.id)
+      setSyncingUserIds((prev) => new Set(prev).add(user.id))
       await window.api.sync.start(user.id)
     } catch (error) {
-      setSyncingUserId(null)
+      setSyncingUserIds((prev) => {
+        const next = new Set(prev)
+        next.delete(user.id)
+        return next
+      })
       toast.error(error instanceof Error ? error.message : '同步失败')
     }
   }
@@ -688,9 +699,9 @@ export default function UsersPage() {
                     </span>
                   </div>
                   <div className="w-24 flex flex-col items-center gap-1">
-                    {syncingUserId === user.id && syncProgress ? (
+                    {syncingUserIds.has(user.id) && syncProgressMap.get(user.id) ? (
                       <span className="text-xs text-[#0A84FF]">
-                        {syncProgress.downloadedCount}/{syncProgress.totalVideos || '?'}
+                        {syncProgressMap.get(user.id)!.downloadedCount}/{syncProgressMap.get(user.id)!.totalVideos || '?'}
                       </span>
                     ) : user.auto_sync ? (
                       <Badge variant="outline" className="text-xs border-green-500 text-green-600">
@@ -708,7 +719,7 @@ export default function UsersPage() {
                     />
                   </div>
                   <div className="w-44 flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                    {syncingUserId === user.id ? (
+                    {syncingUserIds.has(user.id) ? (
                       <Button
                         variant="ghost"
                         size="icon"
@@ -724,7 +735,6 @@ export default function UsersPage() {
                         size="icon"
                         className="h-8 w-8 text-[#6E6E73] hover:text-green-600"
                         onClick={() => handleStartSync(user)}
-                        disabled={syncingUserId !== null}
                         title="开始同步"
                       >
                         <Play className="h-4 w-4" />
@@ -734,7 +744,7 @@ export default function UsersPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-[#6E6E73] hover:text-[#0A84FF]"
-                      onClick={() => window.open(user.homepage_url, '_blank')}
+                      onClick={() => window.api.system.openInAppBrowser(user.homepage_url, user.nickname)}
                       title="打开主页"
                     >
                       <ExternalLink className="h-4 w-4" />

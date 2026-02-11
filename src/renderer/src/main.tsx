@@ -7,12 +7,15 @@ import { RouterProvider } from 'react-router-dom'
 import { store } from './store'
 import { router } from './routes'
 import { Toaster } from './components/ui/sonner'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Provider store={store}>
-      <RouterProvider router={router} />
-      <Toaster position="top-center" />
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <RouterProvider router={router} />
+        <Toaster position="top-center" />
+      </Provider>
+    </ErrorBoundary>
   </StrictMode>
 )
