@@ -320,12 +320,28 @@ declare global {
     error?: string
   }
 
+  interface MergeProgress {
+    status: 'preparing' | 'converting' | 'merging' | 'completed' | 'failed' | 'cancelled'
+    progress: number
+    message: string
+  }
+
+  interface MergeResult {
+    success: boolean
+    outputPath?: string
+    error?: string
+  }
+
   interface VideoAPI {
     getDetail: (url: string) => Promise<VideoInfo>
     downloadToFolder: (info: VideoInfo) => Promise<void>
     downloadSingle: (url: string) => Promise<SingleDownloadResult>
     isSingleDownloadRunning: () => Promise<boolean>
     onSingleProgress: (callback: (progress: SingleDownloadProgress) => void) => () => void
+    mergeWithCover: (secUid: string, folderName: string) => Promise<MergeResult>
+    cancelMerge: () => Promise<void>
+    isMergeRunning: () => Promise<boolean>
+    onMergeProgress: (callback: (progress: MergeProgress) => void) => () => void
   }
 
   interface SystemResourceInfo {

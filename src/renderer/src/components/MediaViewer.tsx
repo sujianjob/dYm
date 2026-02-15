@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download, Film } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface MediaViewerProps {
   post: DbPost | null
@@ -15,6 +16,8 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [recommendCovers, setRecommendCovers] = useState<Map<number, string>>(new Map())
+  const [isMerging, setIsMerging] = useState(false)
+  const [mergeProgress, setMergeProgress] = useState<{ status: string; message: string } | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -35,6 +38,18 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
       audioRef.current.play().catch(() => {})
     }
   }, [media])
+
+  // Subscribe to merge progress
+  useEffect(() => {
+    const unsubscribe = window.api.video.onMergeProgress((progress) => {
+      setMergeProgress({ status: progress.status, message: progress.message })
+      if (progress.status === 'completed' || progress.status === 'failed') {
+        setIsMerging(false)
+        setTimeout(() => setMergeProgress(null), 3000)
+      }
+    })
+    return unsubscribe
+  }, [])
 
   // 相关推荐算法：多样化推荐（同标签优先，但保证作者多样性）
   const recommendations = useMemo(() => {
@@ -167,6 +182,34 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
   const handleSelectRecommend = (rec: DbPost) => {
     if (onSelectPost) {
       onSelectPost(rec)
+    }
+  }
+
+  // Handle video merge with cover
+  const handleMerge = async () => {
+    if (!post || isMerging || post.aweme_type === 68) return
+    setIsMerging(true)
+    try {
+      const result = await window.api.video.mergeWithCover(post.sec_uid, post.folder_name)
+      if (result.success) {
+        toast.success('合并成功')
+      } else if (result.error !== '已取消') {
+        toast.error(result.error || '合并失败')
+      }
+    } catch (error) {
+      toast.error(`合并失败: ${(error as Error).message}`)
+    } finally {
+      setIsMerging(false)
+    }
+  }
+
+  // Handle cancel merge
+  const handleCancelMerge = async () => {
+    try {
+      await window.api.video.cancelMerge()
+      toast.info('已取消合并')
+    } catch (error) {
+      console.error('Failed to cancel merge:', error)
     }
   }
 
@@ -326,6 +369,39 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
             <Download className="h-4 w-4" />
             打开文件夹
           </button>
+
+          {/* 合并视频按钮（仅视频类型显示） */}
+          {post?.aweme_type !== 68 && (
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={isMerging ? handleCancelMerge : handleMerge}
+                className={`flex-1 h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  isMerging
+                    ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
+                    : 'bg-[#F2F2F4] hover:bg-[#E5E5E7] text-[#1D1D1F]'
+                }`}
+              >
+                {isMerging ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    取消
+                  </>
+                ) : (
+                  <>
+                    <Film className="h-4 w-4" />
+                    合并视频
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* 合并进度显示 */}
+          {isMerging && mergeProgress && (
+            <div className="mt-2 text-xs text-[#6E6E73] text-center">
+              {mergeProgress.message}
+            </div>
+          )}
 
           {/* 相关推荐 */}
           <div className="mt-4 flex-1 overflow-hidden">

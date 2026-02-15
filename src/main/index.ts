@@ -949,6 +949,22 @@ app.whenReady().then(() => {
     return isSingleDownloadRunning()
   })
 
+  // Video merge (cover + video)
+  ipcMain.handle('video:mergeWithCover', async (_event, secUid: string, folderName: string) => {
+    const { mergeVideoWithCover } = await import('./services/merger')
+    return mergeVideoWithCover(secUid, folderName)
+  })
+
+  ipcMain.handle('video:cancelMerge', async () => {
+    const { cancelMerge } = await import('./services/merger')
+    cancelMerge()
+  })
+
+  ipcMain.handle('video:isMergeRunning', async () => {
+    const { isMergeRunning } = await import('./services/merger')
+    return isMergeRunning()
+  })
+
   // Open data directory
   ipcMain.handle('system:openDataDirectory', () => {
     shell.openPath(app.getPath('userData'))

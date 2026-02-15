@@ -147,6 +147,16 @@ const videoAPI = {
       callback(progress)
     ipcRenderer.on('download:single-progress', handler)
     return () => ipcRenderer.removeListener('download:single-progress', handler)
+  },
+  mergeWithCover: (secUid: string, folderName: string): Promise<MergeResult> =>
+    ipcRenderer.invoke('video:mergeWithCover', secUid, folderName),
+  cancelMerge: (): Promise<void> => ipcRenderer.invoke('video:cancelMerge'),
+  isMergeRunning: (): Promise<boolean> => ipcRenderer.invoke('video:isMergeRunning'),
+  onMergeProgress: (callback: (progress: MergeProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: MergeProgress): void =>
+      callback(progress)
+    ipcRenderer.on('video:merge-progress', handler)
+    return () => ipcRenderer.removeListener('video:merge-progress', handler)
   }
 }
 
