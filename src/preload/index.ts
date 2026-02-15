@@ -137,7 +137,17 @@ const analysisAPI = {
 
 const videoAPI = {
   getDetail: (url: string): Promise<VideoInfo> => ipcRenderer.invoke('video:getDetail', url),
-  downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info)
+  downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info),
+  downloadSingle: (url: string): Promise<SingleDownloadResult> =>
+    ipcRenderer.invoke('video:downloadSingle', url),
+  isSingleDownloadRunning: (): Promise<boolean> =>
+    ipcRenderer.invoke('video:isSingleDownloadRunning'),
+  onSingleProgress: (callback: (progress: SingleDownloadProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: SingleDownloadProgress): void =>
+      callback(progress)
+    ipcRenderer.on('download:single-progress', handler)
+    return () => ipcRenderer.removeListener('download:single-progress', handler)
+  }
 }
 
 const systemAPI = {

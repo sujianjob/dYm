@@ -307,9 +307,25 @@ declare global {
     imageUrls?: string[]
   }
 
+  interface SingleDownloadProgress {
+    status: 'parsing' | 'downloading' | 'saving' | 'completed' | 'failed'
+    progress: number
+    message: string
+  }
+
+  interface SingleDownloadResult {
+    success: boolean
+    postId?: number
+    userId?: number
+    error?: string
+  }
+
   interface VideoAPI {
     getDetail: (url: string) => Promise<VideoInfo>
     downloadToFolder: (info: VideoInfo) => Promise<void>
+    downloadSingle: (url: string) => Promise<SingleDownloadResult>
+    isSingleDownloadRunning: () => Promise<boolean>
+    onSingleProgress: (callback: (progress: SingleDownloadProgress) => void) => () => void
   }
 
   interface SystemResourceInfo {

@@ -938,6 +938,17 @@ app.whenReady().then(() => {
     shell.openPath(folderPath)
   })
 
+  // Single video download (saves to database)
+  ipcMain.handle('video:downloadSingle', async (_event, url: string) => {
+    const { downloadSingleVideo } = await import('./services/downloader')
+    return downloadSingleVideo(url)
+  })
+
+  ipcMain.handle('video:isSingleDownloadRunning', async () => {
+    const { isSingleDownloadRunning } = await import('./services/downloader')
+    return isSingleDownloadRunning()
+  })
+
   // Open data directory
   ipcMain.handle('system:openDataDirectory', () => {
     shell.openPath(app.getPath('userData'))
