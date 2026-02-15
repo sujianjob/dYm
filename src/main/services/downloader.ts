@@ -434,3 +434,223 @@ export function stopDownloadTask(taskId: number): void {
 export function isTaskRunning(taskId: number): boolean {
   return runningTasks.has(taskId)
 }
+
+// ============================================
+// 单视频下载功能
+// ============================================
+
+export interface SingleDownloadProgress {
+  status: 'parsing' | 'downloading' | 'saving' | 'completed' | 'failed'
+  progress: number // 0-100
+  message: string
+}
+
+export interface SingleDownloadResult {
+  success: boolean
+  postId?: number
+  userId?: number
+  error?: string
+}
+
+// 单视频下载锁，防止同时下载多个
+let singleDownloadRunning = false
+
+function sendSingleProgress(progress: SingleDownloadProgress): void {
+  const windows = BrowserWindow.getAllWindows()
+  for (const win of windows) {
+    win.webContents.send('download:single-progress', progress)
+  }
+}
+
+/**
+ * 下载单个视频并存入数据库
+ *
+ * 流程：
+ * 1. 解析视频链接获取 awemeId 和作者信息
+ * 2. 检查作者是否已存在，不存在则自动创建
+ * 3. 检查视频是否已下载（去重）
+ * 4. 调用 DouyinDownloader 下载视频
+ * 5. 存入数据库
+ */
+export async function downloadSingleVideo(url: string): Promise<SingleDownloadResult> {
+  // 防止并发下载
+  if (singleDownloadRunning) {
+    return { success: false, error: '已有下载任务在进行中，请稍后再试' }
+  }
+
+  // 动态导入避免循环依赖
+  const { fetchVideoDetail, fetchUserProfileBySecUid } = await import('./douyin')
+  const {
+    getSetting,
+    getUserBySecUid,
+    createUser,
+    getPostByAwemeId,
+    createPost
+  } = await import('../database')
+
+  singleDownloadRunning = true
+
+  try {
+    // 1. 检查 Cookie
+    const cookie = getSetting('douyin_cookie')
+    if (!cookie) {
+      sendSingleProgress({ status: 'failed', progress: 0, message: '请先配置抖音 Cookie' })
+      return { success: false, error: '请先配置抖音 Cookie' }
+    }
+
+    // 2. 解析视频链接
+    sendSingleProgress({ status: 'parsing', progress: 10, message: '正在解析视频链接...' })
+
+    let videoDetail
+    try {
+      videoDetail = await fetchVideoDetail(url)
+    } catch (error) {
+      const errMsg = `解析失败: ${(error as Error).message}`
+      sendSingleProgress({ status: 'failed', progress: 0, message: errMsg })
+      return { success: false, error: errMsg }
+    }
+
+    if (!videoDetail || !videoDetail.awemeId) {
+      sendSingleProgress({ status: 'failed', progress: 0, message: '无法解析视频信息' })
+      return { success: false, error: '无法解析视频信息' }
+    }
+
+    const awemeId = videoDetail.awemeId
+    // PostDetailFilter 使用 secUserId，SharePageDetail 使用 author.secUid
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const secUid = (videoDetail as any).secUserId || (videoDetail as any).author?.secUid
+
+    if (!secUid) {
+      sendSingleProgress({ status: 'failed', progress: 0, message: '无法获取作者信息' })
+      return { success: false, error: '无法获取作者信息' }
+    }
+
+    sendSingleProgress({ status: 'parsing', progress: 20, message: `已获取视频信息: ${videoDetail.desc?.slice(0, 30) || awemeId}` })
+
+    // 3. 检查是否已下载
+    const existingPost = getPostByAwemeId(awemeId)
+    if (existingPost) {
+      sendSingleProgress({ status: 'completed', progress: 100, message: '该视频已下载' })
+      return { success: true, postId: existingPost.id, userId: existingPost.user_id }
+    }
+
+    // 4. 查找或创建用户
+    sendSingleProgress({ status: 'parsing', progress: 30, message: '正在获取作者信息...' })
+
+    let user = getUserBySecUid(secUid)
+    if (!user) {
+      // 获取作者详细资料
+      try {
+        const profileRes = await fetchUserProfileBySecUid(secUid)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const userData = (profileRes as any)._data?.user
+
+        if (userData) {
+          user = createUser({
+            sec_uid: secUid,
+            uid: (userData.uid as string) || '',
+            nickname: (userData.nickname as string) || videoDetail.nickname || '未知用户',
+            signature: (userData.signature as string) || '',
+            avatar:
+              (userData.avatar_larger as { url_list?: string[] })?.url_list?.[0] ||
+              (userData.avatar_medium as { url_list?: string[] })?.url_list?.[0] ||
+              '',
+            short_id: (userData.short_id as string) || '',
+            unique_id: (userData.unique_id as string) || '',
+            following_count: (userData.following_count as number) || 0,
+            follower_count: (userData.follower_count as number) || 0,
+            total_favorited: (userData.total_favorited as number) || 0,
+            aweme_count: (userData.aweme_count as number) || 0,
+            homepage_url: `https://www.douyin.com/user/${secUid}`
+          })
+          console.log('[SingleDownload] Created new user:', user.nickname)
+        } else {
+          throw new Error('User data not found in profile response')
+        }
+      } catch (error) {
+        // 如果获取用户资料失败，使用视频中的信息创建简单用户
+        console.warn('[SingleDownload] Failed to fetch user profile, using video info:', error)
+        user = createUser({
+          sec_uid: secUid,
+          nickname: videoDetail.nickname || '未知用户',
+          homepage_url: `https://www.douyin.com/user/${secUid}`
+        })
+      }
+    }
+
+    sendSingleProgress({ status: 'downloading', progress: 40, message: `正在下载视频 (作者: ${user.nickname})...` })
+
+    // 5. 准备下载目录
+    const downloadPath = getDownloadPath()
+    const userPath = join(downloadPath, secUid)
+    const folderName = formatFolderName(awemeId)
+
+    // 6. 下载视频
+    const downloader = new DouyinDownloader({
+      cookie,
+      downloadPath: userPath,
+      naming: '{aweme_id}',
+      folderize: true,
+      cover: true,
+      music: true,
+      desc: true
+    })
+
+    try {
+      sendSingleProgress({ status: 'downloading', progress: 50, message: '正在下载视频文件...' })
+      // PostDetailFilter 有 toAwemeData() 方法，SharePageDetail 直接使用
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const awemeData = typeof (videoDetail as any).toAwemeData === 'function'
+        ? (videoDetail as any).toAwemeData()
+        : videoDetail
+      await downloader.createDownloadTasks(awemeData, userPath)
+      sendSingleProgress({ status: 'downloading', progress: 80, message: '下载完成，正在保存记录...' })
+    } catch (error) {
+      const errMsg = `下载失败: ${(error as Error).message}`
+      sendSingleProgress({ status: 'failed', progress: 0, message: errMsg })
+      return { success: false, error: errMsg }
+    }
+
+    // 7. 存入数据库
+    sendSingleProgress({ status: 'saving', progress: 90, message: '正在保存到数据库...' })
+
+    // 获取字段时兼容 PostDetailFilter 和 SharePageDetail
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const vd = videoDetail as any
+    const videoNickname = vd.nickname || vd.author?.nickname || user.nickname
+    const videoCaption = vd.caption || ''
+    const videoDesc = vd.desc || ''
+    const videoAwemeType = vd.awemeType ?? 0
+    const videoCreateTime = vd.createTime || ''
+
+    const post = createPost({
+      aweme_id: awemeId,
+      user_id: user.id,
+      sec_uid: secUid,
+      nickname: videoNickname,
+      caption: videoCaption,
+      desc: videoDesc,
+      aweme_type: videoAwemeType,
+      create_time: videoCreateTime,
+      folder_name: folderName,
+      video_path: join(userPath, folderName),
+      cover_path: join(userPath, folderName),
+      music_path: join(userPath, folderName)
+    })
+
+    sendSingleProgress({ status: 'completed', progress: 100, message: `下载成功: ${videoDesc?.slice(0, 30) || awemeId}` })
+
+    return { success: true, postId: post.id, userId: user.id }
+  } catch (error) {
+    const errMsg = `下载失败: ${(error as Error).message}`
+    console.error('[SingleDownload] Error:', error)
+    sendSingleProgress({ status: 'failed', progress: 0, message: errMsg })
+    return { success: false, error: errMsg }
+  } finally {
+    singleDownloadRunning = false
+  }
+}
+
+export function isSingleDownloadRunning(): boolean {
+  return singleDownloadRunning
+}

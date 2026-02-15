@@ -137,7 +137,29 @@ const analysisAPI = {
 
 const videoAPI = {
   getDetail: (url: string): Promise<VideoInfo> => ipcRenderer.invoke('video:getDetail', url),
-  downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info)
+  downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info),
+  downloadSingle: (url: string): Promise<SingleDownloadResult> =>
+    ipcRenderer.invoke('video:downloadSingle', url),
+  isSingleDownloadRunning: (): Promise<boolean> =>
+    ipcRenderer.invoke('video:isSingleDownloadRunning'),
+  onSingleProgress: (callback: (progress: SingleDownloadProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: SingleDownloadProgress): void =>
+      callback(progress)
+    ipcRenderer.on('download:single-progress', handler)
+    return () => ipcRenderer.removeListener('download:single-progress', handler)
+  },
+  mergeWithCover: (secUid: string, folderName: string): Promise<MergeResult> =>
+    ipcRenderer.invoke('video:mergeWithCover', secUid, folderName),
+  extendFirstFrame: (secUid: string, folderName: string): Promise<MergeResult> =>
+    ipcRenderer.invoke('video:extendFirstFrame', secUid, folderName),
+  cancelMerge: (): Promise<void> => ipcRenderer.invoke('video:cancelMerge'),
+  isMergeRunning: (): Promise<boolean> => ipcRenderer.invoke('video:isMergeRunning'),
+  onMergeProgress: (callback: (progress: MergeProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: MergeProgress): void =>
+      callback(progress)
+    ipcRenderer.on('video:merge-progress', handler)
+    return () => ipcRenderer.removeListener('video:merge-progress', handler)
+  }
 }
 
 const systemAPI = {

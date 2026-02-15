@@ -938,6 +938,39 @@ app.whenReady().then(() => {
     shell.openPath(folderPath)
   })
 
+  // Single video download (saves to database)
+  ipcMain.handle('video:downloadSingle', async (_event, url: string) => {
+    const { downloadSingleVideo } = await import('./services/downloader')
+    return downloadSingleVideo(url)
+  })
+
+  ipcMain.handle('video:isSingleDownloadRunning', async () => {
+    const { isSingleDownloadRunning } = await import('./services/downloader')
+    return isSingleDownloadRunning()
+  })
+
+  // Video merge (cover + video)
+  ipcMain.handle('video:mergeWithCover', async (_event, secUid: string, folderName: string) => {
+    const { mergeVideoWithCover } = await import('./services/merger')
+    return mergeVideoWithCover(secUid, folderName)
+  })
+
+  ipcMain.handle('video:cancelMerge', async () => {
+    const { cancelMerge } = await import('./services/merger')
+    cancelMerge()
+  })
+
+  ipcMain.handle('video:isMergeRunning', async () => {
+    const { isMergeRunning } = await import('./services/merger')
+    return isMergeRunning()
+  })
+
+  // Extend first frame
+  ipcMain.handle('video:extendFirstFrame', async (_event, secUid: string, folderName: string) => {
+    const { extendFirstFrame } = await import('./services/merger')
+    return extendFirstFrame(secUid, folderName)
+  })
+
   // Open data directory
   ipcMain.handle('system:openDataDirectory', () => {
     shell.openPath(app.getPath('userData'))

@@ -39,12 +39,41 @@ export interface LinkParseResult {
 }
 
 /**
+ * 从 URL 中提取 modal_id 参数（视频弹窗链接）
+ * 例如: https://www.douyin.com/user/self?modal_id=7598918097298377984
+ */
+function extractModalId(url: string): string | null {
+  try {
+    const urlObj = new URL(url)
+    const modalId = urlObj.searchParams.get('modal_id')
+    if (modalId && /^\d+$/.test(modalId)) {
+      return modalId
+    }
+  } catch {
+    // URL 解析失败，尝试正则匹配
+    const match = url.match(/[?&]modal_id=(\d+)/)
+    if (match) {
+      return match[1]
+    }
+  }
+  return null
+}
+
+/**
  * 智能识别抖音链接类型
- * 1. 先尝试提取 sec_user_id（用户链接）
- * 2. 如果失败，尝试提取 aweme_id（作品链接）
+ * 1. 优先检查 modal_id 参数（视频弹窗链接）
+ * 2. 尝试提取 sec_user_id（用户链接）
+ * 3. 尝试提取 aweme_id（作品链接）
  */
 export async function parseDouyinUrl(url: string): Promise<LinkParseResult> {
   console.log('[Douyin] parseDouyinUrl:', url)
+
+  // 优先检查 modal_id 参数（视频弹窗链接）
+  const modalId = extractModalId(url)
+  if (modalId) {
+    console.log('[Douyin] Detected modal_id in URL, awemeId:', modalId)
+    return { type: 'video', id: modalId }
+  }
 
   // 尝试提取用户 ID
   try {
@@ -101,12 +130,25 @@ export async function fetchUserProfileBySecUid(secUserId: string) {
 
 /**
  * 获取作品详情（支持 URL 或 aweme_id）
+ * 支持的格式：
+ * - 纯数字 aweme_id: 7598918097298377984
+ * - 视频链接: https://www.douyin.com/video/7598918097298377984
+ * - 带 modal_id 的链接: https://www.douyin.com/user/self?modal_id=7598918097298377984
+ * - 短链接: https://v.douyin.com/xxx
  */
 export async function fetchVideoDetail(urlOrAwemeId: string) {
   if (!handler) {
     throw new Error('DouyinHandler not initialized, please set cookie first')
   }
   console.log('[Douyin] fetchVideoDetail:', urlOrAwemeId)
+
+  // 如果包含 modal_id 参数，优先提取
+  const modalId = extractModalId(urlOrAwemeId)
+  if (modalId) {
+    console.log('[Douyin] Extracted modal_id:', modalId)
+    urlOrAwemeId = modalId
+  }
+
   try {
     const detail = await handler.fetchOneVideo(urlOrAwemeId)
     console.log('[Douyin] video detail:', JSON.stringify(detail, null, 2))

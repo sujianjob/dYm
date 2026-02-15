@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Timer,
-  X
+  X,
+  Link
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog'
+import { SingleVideoDownloadDialog } from '@/components/SingleVideoDownloadDialog'
 
 const PAGE_SIZE = 10
 
@@ -40,6 +42,7 @@ export default function DownloadPage() {
   const [tasks, setTasks] = useState<DbTaskWithUsers[]>([])
   const [users, setUsers] = useState<DbUser[]>([])
   const [open, setOpen] = useState(false)
+  const [singleOpen, setSingleOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<DbTaskWithUsers | null>(null)
   const [taskName, setTaskName] = useState('')
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([])
@@ -205,10 +208,20 @@ export default function DownloadPage() {
       {/* Header */}
       <header className="h-16 flex items-center justify-between px-6 border-b border-[#E5E5E7] bg-white">
         <h1 className="text-xl font-semibold text-[#1D1D1F]">视频下载</h1>
-        <Button onClick={handleOpenAdd} className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white">
-          <Plus className="h-4 w-4 mr-2" />
-          添加任务
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setSingleOpen(true)}
+            className="border-[#E5E5E7] hover:bg-[#F2F2F4]"
+          >
+            <Link className="h-4 w-4 mr-2" />
+            下载单个视频
+          </Button>
+          <Button onClick={handleOpenAdd} className="bg-[#0A84FF] hover:bg-[#0A84FF]/90 text-white">
+            <Plus className="h-4 w-4 mr-2" />
+            添加任务
+          </Button>
+        </div>
       </header>
 
       {/* Content */}
@@ -523,6 +536,16 @@ export default function DownloadPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Single Video Download Dialog */}
+      <SingleVideoDownloadDialog
+        open={singleOpen}
+        onOpenChange={setSingleOpen}
+        onSuccess={() => {
+          // 刷新用户列表以显示可能新增的用户
+          loadUsers()
+        }}
+      />
     </div>
   )
 }
