@@ -1,0 +1,117 @@
+{
+  "timestamp": "2026-02-12T00:00:00.000Z",
+  "version": "1.0.0",
+  "project": {
+    "name": "dYm",
+    "type": "Electron + React Desktop Application",
+    "description": "抖音视频下载与智能分析管理工具",
+    "language": "TypeScript",
+    "license": "GPL-3.0"
+  },
+  "modules": [
+    {
+      "path": "src/main",
+      "name": "Electron 主进程",
+      "type": "backend",
+      "language": "TypeScript",
+      "entry": "src/main/index.ts",
+      "description": "Electron 主进程，处理 IPC 通信、数据库操作、文件系统、系统托盘等",
+      "keyFiles": [
+        "src/main/index.ts",
+        "src/main/database/index.ts",
+        "src/main/services/downloader.ts",
+        "src/main/services/analyzer.ts",
+        "src/main/services/syncer.ts",
+        "src/main/services/scheduler.ts",
+        "src/main/services/douyin.ts",
+        "src/main/services/cookie.ts",
+        "src/main/services/updater.ts"
+      ],
+      "testDir": null,
+      "hasConfig": false
+    },
+    {
+      "path": "src/renderer",
+      "name": "React 渲染进程",
+      "type": "frontend",
+      "language": "TypeScript + TSX",
+      "entry": "src/renderer/src/main.tsx",
+      "description": "React 前端界面，使用 React Router、Redux、Tailwind CSS、Radix UI",
+      "keyFiles": [
+        "src/renderer/src/main.tsx",
+        "src/renderer/src/routes/index.tsx",
+        "src/renderer/src/App.tsx",
+        "src/renderer/src/store/index.ts",
+        "src/renderer/src/pages/DashboardPage.tsx",
+        "src/renderer/src/pages/HomePage.tsx",
+        "src/renderer/src/pages/settings/UsersPage.tsx",
+        "src/renderer/src/pages/settings/DownloadPage.tsx",
+        "src/renderer/src/pages/settings/AnalysisPage.tsx",
+        "src/renderer/src/pages/settings/FilesPage.tsx",
+        "src/renderer/src/components/AppLayout.tsx",
+        "src/renderer/src/components/ErrorBoundary.tsx",
+        "src/renderer/src/components/MediaViewer.tsx"
+      ],
+      "testDir": null,
+      "hasConfig": true,
+      "configFiles": [
+        "tailwind.config.js",
+        "postcss.config.js"
+      ]
+    },
+    {
+      "path": "src/preload",
+      "name": "Preload 桥接层",
+      "type": "bridge",
+      "language": "TypeScript",
+      "entry": "src/preload/index.ts",
+      "description": "Electron preload 脚本，通过 contextBridge 暴露安全的 API 给渲染进程",
+      "keyFiles": [
+        "src/preload/index.ts",
+        "src/preload/index.d.ts"
+      ],
+      "testDir": null,
+      "hasConfig": false
+    }
+  ],
+  "coverage": {
+    "totalFiles": 60,
+    "scannedFiles": 60,
+    "percentage": 100,
+    "missingAreas": [],
+    "ignoredDirs": [
+      "node_modules",
+      "dist",
+      "out",
+      ".git",
+      "test-results",
+      "playwright-report",
+      "blob-report",
+      "playwright/.cache",
+      ".ace-tool",
+      "packages/server/data"
+    ]
+  },
+  "architecture": {
+    "pattern": "Electron Multi-Process Architecture",
+    "mainProcess": "src/main",
+    "rendererProcess": "src/renderer",
+    "preloadScript": "src/preload",
+    "ipcCommunication": true,
+    "database": "better-sqlite3 (SQLite)",
+    "stateManagement": "Redux Toolkit"
+  },
+  "buildTools": {
+    "bundler": "electron-vite",
+    "builder": "electron-builder",
+    "package": "npm",
+    "linter": "eslint",
+    "formatter": "prettier",
+    "typeChecker": "tsc"
+  },
+  "testing": {
+    "e2e": "playwright",
+    "hasTests": true,
+    "testDir": "e2e"
+  }
+}
