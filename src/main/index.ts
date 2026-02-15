@@ -965,6 +965,12 @@ app.whenReady().then(() => {
     return isMergeRunning()
   })
 
+  // Extend first frame
+  ipcMain.handle('video:extendFirstFrame', async (_event, secUid: string, folderName: string) => {
+    const { extendFirstFrame } = await import('./services/merger')
+    return extendFirstFrame(secUid, folderName)
+  })
+
   // Open data directory
   ipcMain.handle('system:openDataDirectory', () => {
     shell.openPath(app.getPath('userData'))

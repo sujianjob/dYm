@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download, Film } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download, Film, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface MediaViewerProps {
@@ -203,6 +203,24 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
     }
   }
 
+  // Handle extend first frame
+  const handleExtendFirstFrame = async () => {
+    if (!post || isMerging || post.aweme_type === 68) return
+    setIsMerging(true)
+    try {
+      const result = await window.api.video.extendFirstFrame(post.sec_uid, post.folder_name)
+      if (result.success) {
+        toast.success('拉长首帧完成')
+      } else if (result.error !== '已取消') {
+        toast.error(result.error || '拉长首帧失败')
+      }
+    } catch (error) {
+      toast.error(`拉长首帧失败: ${(error as Error).message}`)
+    } finally {
+      setIsMerging(false)
+    }
+  }
+
   // Handle cancel merge
   const handleCancelMerge = async () => {
     try {
@@ -375,6 +393,7 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
             <div className="flex gap-2 mt-2">
               <button
                 onClick={isMerging ? handleCancelMerge : handleMerge}
+                disabled={isMerging && mergeProgress?.status !== 'preparing' && mergeProgress?.status !== 'converting' && mergeProgress?.status !== 'merging'}
                 className={`flex-1 h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
                   isMerging
                     ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
@@ -390,6 +409,27 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
                   <>
                     <Film className="h-4 w-4" />
                     合并视频
+                  </>
+                )}
+              </button>
+              <button
+                onClick={isMerging ? handleCancelMerge : handleExtendFirstFrame}
+                disabled={isMerging && mergeProgress?.status !== 'preparing' && mergeProgress?.status !== 'converting' && mergeProgress?.status !== 'merging'}
+                className={`flex-1 h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  isMerging
+                    ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
+                    : 'bg-[#F2F2F4] hover:bg-[#E5E5E7] text-[#1D1D1F]'
+                }`}
+              >
+                {isMerging ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    取消
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    拉长首帧
                   </>
                 )}
               </button>

@@ -150,6 +150,8 @@ const videoAPI = {
   },
   mergeWithCover: (secUid: string, folderName: string): Promise<MergeResult> =>
     ipcRenderer.invoke('video:mergeWithCover', secUid, folderName),
+  extendFirstFrame: (secUid: string, folderName: string): Promise<MergeResult> =>
+    ipcRenderer.invoke('video:extendFirstFrame', secUid, folderName),
   cancelMerge: (): Promise<void> => ipcRenderer.invoke('video:cancelMerge'),
   isMergeRunning: (): Promise<boolean> => ipcRenderer.invoke('video:isMergeRunning'),
   onMergeProgress: (callback: (progress: MergeProgress) => void): (() => void) => {

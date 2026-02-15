@@ -339,6 +339,7 @@ declare global {
     isSingleDownloadRunning: () => Promise<boolean>
     onSingleProgress: (callback: (progress: SingleDownloadProgress) => void) => () => void
     mergeWithCover: (secUid: string, folderName: string) => Promise<MergeResult>
+    extendFirstFrame: (secUid: string, folderName: string) => Promise<MergeResult>
     cancelMerge: () => Promise<void>
     isMergeRunning: () => Promise<boolean>
     onMergeProgress: (callback: (progress: MergeProgress) => void) => () => void
