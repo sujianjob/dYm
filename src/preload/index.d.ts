@@ -236,12 +236,19 @@ declare global {
     nickname: string
   }
 
+  // 排序配置
+  interface SortConfig {
+    field: 'create_time' | 'downloaded_at' | 'analyzed_at' | 'analysis_content_level'
+    order: 'ASC' | 'DESC'
+  }
+
   interface PostFilters {
     secUid?: string
     tags?: string[]
     minContentLevel?: number
     maxContentLevel?: number
     analyzedOnly?: boolean
+    sort?: SortConfig
   }
 
   interface PostAPI {
@@ -396,7 +403,7 @@ declare global {
   }
 
   interface FilesAPI {
-    getUserPosts: (userId: number, page?: number, pageSize?: number) => Promise<{ posts: DbPost[]; total: number }>
+    getUserPosts: (userId: number, page?: number, pageSize?: number, sort?: SortConfig) => Promise<{ posts: DbPost[]; total: number }>
     getFileSizes: (secUid: string) => Promise<{ totalSize: number; folderCount: number }>
     getPostSize: (secUid: string, folderName: string) => Promise<number>
     deletePost: (postId: number) => Promise<boolean>

@@ -30,9 +30,11 @@ import {
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
 import { MediaViewer } from '@/components/MediaViewer'
+import { SortSelect, getInitialSort } from '@/components/SortSelect'
 
 const IMAGE_AWEME_TYPE = 68
 const PAGE_SIZE = 50
+const SORT_STORAGE_KEY = 'files-page-sort'
 
 function formatSize(bytes: number): string {
   if (bytes === 0) return '0 B'
@@ -60,10 +62,15 @@ export default function FilesPage() {
   const [selectedPost, setSelectedPost] = useState<DbPost | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'post' | 'batch' | 'user'; id?: number; count?: number } | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: 'post' | 'batch' | 'user'
+    id?: number
+    count?: number
+  } | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [showUserDropdown, setShowUserDropdown] = useState(false)
   const [userSearch, setUserSearch] = useState('')
+  const [sort, setSort] = useState<SortConfig>(() => getInitialSort(SORT_STORAGE_KEY))
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -71,7 +78,9 @@ export default function FilesPage() {
   const totalSize = users.reduce((sum, u) => sum + u.fileSize, 0)
   const totalFiles = users.reduce((sum, u) => sum + u.folderCount, 0)
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => {
+    loadUsers()
+  }, [])
 
   useEffect(() => {
     if (selectedUser) {
@@ -82,7 +91,7 @@ export default function FilesPage() {
       setSelectedIds(new Set())
       loadPosts(selectedUser, 1, true)
     }
-  }, [selectedUser])
+  }, [selectedUser, sort])
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -137,7 +146,7 @@ export default function FilesPage() {
     if (reset) setPostsLoading(true)
     else setLoadingMore(true)
     try {
-      const result = await window.api.files.getUserPosts(user.id, pageNum, PAGE_SIZE)
+      const result = await window.api.files.getUserPosts(user.id, pageNum, PAGE_SIZE, sort)
       const newPosts = result?.posts ?? []
       if (reset) {
         setPosts(newPosts)
@@ -329,13 +338,21 @@ export default function FilesPage() {
               <HardDrive className="h-4 w-4 text-[#6E6E73]" />
               <span>{selectedUser?.nickname || '选择用户'}</span>
               {selectedUser && (
-                <span className="text-xs text-[#A1A1A6]">({formatSize(selectedUser.fileSize)})</span>
+                <span className="text-xs text-[#A1A1A6]">
+                  ({formatSize(selectedUser.fileSize)})
+                </span>
               )}
-              <ChevronDown className={`h-4 w-4 text-[#6E6E73] transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown
+                className={`h-4 w-4 text-[#6E6E73] transition-transform ${showUserDropdown ? 'rotate-180' : ''}`}
+              />
             </button>
             {selectedUser && (
               <button
-                onClick={(e) => { e.stopPropagation(); setSelectedUser(null); setPosts([]) }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setSelectedUser(null)
+                  setPosts([])
+                }}
                 className="absolute -right-2 -top-2 h-5 w-5 flex items-center justify-center rounded-full bg-[#0A84FF] text-white"
               >
                 <X className="h-3 w-3" />
@@ -384,14 +401,15 @@ export default function FilesPage() {
           </div>
 
           {posts.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={selectedIds.size === posts.length && posts.length > 0}
-                onCheckedChange={selectAll}
-              />
-              <span className="text-sm text-[#6E6E73]">
-                全选 ({posts.length})
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={selectedIds.size === posts.length && posts.length > 0}
+                  onCheckedChange={selectAll}
+                />
+                <span className="text-sm text-[#6E6E73]">全选 ({posts.length})</span>
+              </div>
+              <SortSelect value={sort} onChange={setSort} storageKey={SORT_STORAGE_KEY} />
             </div>
           )}
         </div>
@@ -432,96 +450,114 @@ export default function FilesPage() {
             </div>
           ) : (
             <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-4">
-              {posts.map((post) => (
-                <ContextMenu key={post.id}>
-                  <ContextMenuTrigger asChild>
-                    <Card
-                      className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow group border-[#E5E5E7] bg-white relative"
-                      onClick={() => { setSelectedPost(post); setViewerOpen(true) }}
-                    >
-                      {/* Select checkbox */}
-                      <div
-                        className="absolute top-2 right-2 z-10"
-                        onClick={(e) => { e.stopPropagation(); toggleSelect(post.id) }}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-4">
+                {posts.map((post) => (
+                  <ContextMenu key={post.id}>
+                    <ContextMenuTrigger asChild>
+                      <Card
+                        className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow group border-[#E5E5E7] bg-white relative"
+                        onClick={() => {
+                          setSelectedPost(post)
+                          setViewerOpen(true)
+                        }}
                       >
-                        <div className={`h-6 w-6 rounded-md border-2 flex items-center justify-center transition-colors ${selectedIds.has(post.id) ? 'bg-[#0A84FF] border-[#0A84FF]' : 'bg-white/80 border-white/60 group-hover:border-white'}`}>
-                          {selectedIds.has(post.id) && (
-                            <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="aspect-[9/16] bg-[#F2F2F4] relative">
-                        {getCoverUrl(post) ? (
-                          <img
-                            src={getCoverUrl(post)!}
-                            alt={post.desc}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            {isImagePost(post) ? (
-                              <Images className="h-12 w-12 text-[#A1A1A6]" />
-                            ) : (
-                              <Video className="h-12 w-12 text-[#A1A1A6]" />
+                        {/* Select checkbox */}
+                        <div
+                          className="absolute top-2 right-2 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleSelect(post.id)
+                          }}
+                        >
+                          <div
+                            className={`h-6 w-6 rounded-md border-2 flex items-center justify-center transition-colors ${selectedIds.has(post.id) ? 'bg-[#0A84FF] border-[#0A84FF]' : 'bg-white/80 border-white/60 group-hover:border-white'}`}
+                          >
+                            {selectedIds.has(post.id) && (
+                              <svg
+                                className="h-4 w-4 text-white"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
                             )}
                           </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                          {isImagePost(post) ? (
-                            <Images className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+
+                        <div className="aspect-[9/16] bg-[#F2F2F4] relative">
+                          {getCoverUrl(post) ? (
+                            <img
+                              src={getCoverUrl(post)!}
+                              alt={post.desc}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
-                            <Play className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="w-full h-full flex items-center justify-center">
+                              {isImagePost(post) ? (
+                                <Images className="h-12 w-12 text-[#A1A1A6]" />
+                              ) : (
+                                <Video className="h-12 w-12 text-[#A1A1A6]" />
+                              )}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                            {isImagePost(post) ? (
+                              <Images className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            ) : (
+                              <Play className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            )}
+                          </div>
+                          <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                            {isImagePost(post) ? '图集' : '视频'}
+                          </div>
+                          {post.create_time && (
+                            <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
+                              {formatDate(post.create_time)}
+                            </div>
                           )}
                         </div>
-                        <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                          {isImagePost(post) ? '图集' : '视频'}
+                        <div className="p-3">
+                          <p className="text-sm font-medium text-[#1D1D1F] line-clamp-2">
+                            {post.desc || post.caption || '无标题'}
+                          </p>
+                          <p className="text-xs text-[#6E6E73] mt-1">@{post.nickname}</p>
                         </div>
-                        {post.create_time && (
-                          <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
-                            {formatDate(post.create_time)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <p className="text-sm font-medium text-[#1D1D1F] line-clamp-2">
-                          {post.desc || post.caption || '无标题'}
-                        </p>
-                        <p className="text-xs text-[#6E6E73] mt-1">@{post.nickname}</p>
-                      </div>
-                    </Card>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent>
-                    <ContextMenuItem
-                      onClick={() => window.api.post.openFolder(post.sec_uid, post.folder_name)}
-                    >
-                      <FolderOpen className="h-4 w-4 mr-2" />
-                      在文件管理器中打开
-                    </ContextMenuItem>
-                    <ContextMenuItem
-                      onClick={() => setDeleteConfirm({ type: 'post', id: post.id })}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      删除文件
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
-              ))}
-            </div>
+                      </Card>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent>
+                      <ContextMenuItem
+                        onClick={() => window.api.post.openFolder(post.sec_uid, post.folder_name)}
+                      >
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        在文件管理器中打开
+                      </ContextMenuItem>
+                      <ContextMenuItem
+                        onClick={() => setDeleteConfirm({ type: 'post', id: post.id })}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        删除文件
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ))}
+              </div>
 
-            {/* Infinite scroll sentinel */}
-            <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
-              {loadingMore && (
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0A84FF]" />
-              )}
-              {!hasMore && posts.length > 0 && (
-                <span className="text-sm text-[#A1A1A6]">已加载全部 {postTotal} 个作品</span>
-              )}
-            </div>
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} className="h-10 flex items-center justify-center mt-4">
+                {loadingMore && (
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#0A84FF]" />
+                )}
+                {!hasMore && posts.length > 0 && (
+                  <span className="text-sm text-[#A1A1A6]">已加载全部 {postTotal} 个作品</span>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -542,17 +578,27 @@ export default function FilesPage() {
             <DialogTitle>确认删除</DialogTitle>
             <DialogDescription>
               {deleteConfirm?.type === 'post' && '确定要删除该作品的文件吗？'}
-              {deleteConfirm?.type === 'batch' && `确定要删除选中的 ${deleteConfirm.count} 个文件吗？`}
-              {deleteConfirm?.type === 'user' && `确定要删除 ${selectedUser?.nickname} 的所有文件吗？`}
+              {deleteConfirm?.type === 'batch' &&
+                `确定要删除选中的 ${deleteConfirm.count} 个文件吗？`}
+              {deleteConfirm?.type === 'user' &&
+                `确定要删除 ${selectedUser?.nickname} 的所有文件吗？`}
             </DialogDescription>
           </DialogHeader>
           <p className="text-xs text-red-500 px-1">此操作不可撤销，文件将被永久删除</p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={deleteLoading}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              disabled={deleteLoading}
+            >
               取消
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete} disabled={deleteLoading}>
-              {deleteLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              {deleteLoading ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
               确认删除
             </Button>
           </DialogFooter>

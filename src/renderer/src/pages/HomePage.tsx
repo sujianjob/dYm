@@ -23,9 +23,11 @@ import {
 } from '@/components/ui/context-menu'
 import { MediaViewer } from '@/components/MediaViewer'
 import { VideoDownloadDialog } from '@/components/VideoDownloadDialog'
+import { SortSelect, getInitialSort } from '@/components/SortSelect'
 
 const IMAGE_AWEME_TYPE = 68
 const PAGE_SIZE = 50
+const SORT_STORAGE_KEY = 'home-page-sort'
 
 export default function HomePage() {
   const [posts, setPosts] = useState<DbPost[]>([])
@@ -50,6 +52,7 @@ export default function HomePage() {
   const [searchKeyword, setSearchKeyword] = useState('')
   const [showAuthorDropdown, setShowAuthorDropdown] = useState(false)
   const [authorSearch, setAuthorSearch] = useState('')
+  const [sort, setSort] = useState<SortConfig>(() => getInitialSort(SORT_STORAGE_KEY))
   const sentinelRef = useRef<HTMLDivElement>(null)
   const authorDropdownRef = useRef<HTMLDivElement>(null)
   const authorSearchInputRef = useRef<HTMLInputElement>(null)
@@ -60,9 +63,10 @@ export default function HomePage() {
       tags: selectedTags.length > 0 ? selectedTags : undefined,
       minContentLevel: sexyLevelRange[0] > 0 ? sexyLevelRange[0] : undefined,
       maxContentLevel: sexyLevelRange[1] < 10 ? sexyLevelRange[1] : undefined,
-      analyzedOnly: analyzedOnly || undefined
+      analyzedOnly: analyzedOnly || undefined,
+      sort
     }),
-    [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly]
+    [selectedSecUid, selectedTags, sexyLevelRange, analyzedOnly, sort]
   )
 
   useEffect(() => {
@@ -365,7 +369,8 @@ export default function HomePage() {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <SortSelect value={sort} onChange={setSort} storageKey={SORT_STORAGE_KEY} />
               <span className="text-[13px] text-[#A1A1A6]">共 {total.toLocaleString()} 个视频</span>
             </div>
           </div>

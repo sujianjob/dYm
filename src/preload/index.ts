@@ -203,8 +203,8 @@ const updaterAPI = {
 }
 
 const filesAPI = {
-  getUserPosts: (userId: number, page?: number, pageSize?: number): Promise<{ posts: DbPost[]; total: number }> =>
-    ipcRenderer.invoke('files:getUserPosts', userId, page, pageSize),
+  getUserPosts: (userId: number, page?: number, pageSize?: number, sort?: SortConfig): Promise<{ posts: DbPost[]; total: number }> =>
+    ipcRenderer.invoke('files:getUserPosts', userId, page, pageSize, sort),
   getFileSizes: (secUid: string): Promise<{ totalSize: number; folderCount: number }> =>
     ipcRenderer.invoke('files:getFileSizes', secUid),
   getPostSize: (secUid: string, folderName: string): Promise<number> =>

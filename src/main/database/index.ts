@@ -731,11 +731,12 @@ export function getPostByAwemeId(awemeId: string): DbPost | undefined {
   return database.prepare('SELECT * FROM posts WHERE aweme_id = ?').get(awemeId) as DbPost | undefined
 }
 
-export function getPostsByUserId(userId: number, page = 1, pageSize = 50): { posts: DbPost[]; total: number } {
+export function getPostsByUserId(userId: number, page = 1, pageSize = 50, sort?: SortConfig): { posts: DbPost[]; total: number } {
   const database = getDatabase()
   const offset = (page - 1) * pageSize
+  const orderClause = buildOrderClause(sort)
   const posts = database
-    .prepare('SELECT * FROM posts WHERE user_id = ? ORDER BY create_time DESC LIMIT ? OFFSET ?')
+    .prepare(`SELECT * FROM posts WHERE user_id = ? ${orderClause} LIMIT ? OFFSET ?`)
     .all(userId, pageSize, offset) as DbPost[]
   const row = database
     .prepare('SELECT COUNT(*) as count FROM posts WHERE user_id = ?')
@@ -754,12 +755,29 @@ export interface PostAuthor {
   nickname: string
 }
 
+// 排序配置
+export interface SortConfig {
+  field: 'create_time' | 'downloaded_at' | 'analyzed_at' | 'analysis_content_level'
+  order: 'ASC' | 'DESC'
+}
+
+// 白名单校验防止 SQL 注入
+const ALLOWED_SORT_FIELDS = ['create_time', 'downloaded_at', 'analyzed_at', 'analysis_content_level']
+const ALLOWED_ORDERS = ['ASC', 'DESC']
+
+function buildOrderClause(sort?: SortConfig): string {
+  const sortField = sort?.field && ALLOWED_SORT_FIELDS.includes(sort.field) ? sort.field : 'create_time'
+  const sortOrder = sort?.order && ALLOWED_ORDERS.includes(sort.order) ? sort.order : 'DESC'
+  return `ORDER BY ${sortField} ${sortOrder}`
+}
+
 export interface PostFilters {
   secUid?: string
   tags?: string[]
   minContentLevel?: number
   maxContentLevel?: number
   analyzedOnly?: boolean
+  sort?: SortConfig
 }
 
 export function getAllPosts(
@@ -817,9 +835,10 @@ export function getAllPosts(
   }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`
+  const orderClause = buildOrderClause(filters?.sort)
 
   const posts = database
-    .prepare(`SELECT * FROM posts ${whereClause} ORDER BY create_time DESC LIMIT ? OFFSET ?`)
+    .prepare(`SELECT * FROM posts ${whereClause} ${orderClause} LIMIT ? OFFSET ?`)
     .all(...params, pageSize, offset) as DbPost[]
 
   const countRow = database

@@ -34,6 +34,7 @@ import {
   type CreateTaskInput,
   type UpdateUserSettingsInput,
   type PostFilters,
+  type SortConfig,
   deletePost,
   getPostsByUserId,
   deletePostsByUserId,
@@ -711,8 +712,8 @@ app.whenReady().then(() => {
   })
 
   // Files management IPC handlers
-  ipcMain.handle('files:getUserPosts', (_event, userId: number, page?: number, pageSize?: number) =>
-    getPostsByUserId(userId, page, pageSize)
+  ipcMain.handle('files:getUserPosts', (_event, userId: number, page?: number, pageSize?: number, sort?: SortConfig) =>
+    getPostsByUserId(userId, page, pageSize, sort)
   )
 
   ipcMain.handle('files:getFileSizes', (_event, secUid: string) => {
