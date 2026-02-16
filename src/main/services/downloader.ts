@@ -48,7 +48,7 @@ export interface DownloadProgress {
   downloadedPosts: number
 }
 
-let runningTasks: Map<number, { abort: boolean }> = new Map()
+const runningTasks: Map<number, { abort: boolean }> = new Map()
 
 function sendProgress(progress: DownloadProgress): void {
   const windows = BrowserWindow.getAllWindows()
@@ -113,14 +113,23 @@ export async function startDownloadTask(taskId: number): Promise<void> {
     })
 
     // 使用并发控制下载用户视频
-    const userTasks = task.users.map(
-      (user, index) => () => {
-        // 优先使用用户级别的下载限制，如果为0则使用全局设置
-        const userMaxCount = (user as DbUser & { max_download_count?: number }).max_download_count
-        const maxDownloadCount = userMaxCount && userMaxCount > 0 ? userMaxCount : globalMaxDownloadCount
-        return downloadUserVideos(taskId, task, user, index, downloadPath, cookie, maxDownloadCount, historicalDownloads, videoDownloadConcurrency)
-      }
-    )
+    const userTasks = task.users.map((user, index) => () => {
+      // 优先使用用户级别的下载限制，如果为0则使用全局设置
+      const userMaxCount = (user as DbUser & { max_download_count?: number }).max_download_count
+      const maxDownloadCount =
+        userMaxCount && userMaxCount > 0 ? userMaxCount : globalMaxDownloadCount
+      return downloadUserVideos(
+        taskId,
+        task,
+        user,
+        index,
+        downloadPath,
+        cookie,
+        maxDownloadCount,
+        historicalDownloads,
+        videoDownloadConcurrency
+      )
+    })
 
     const results = await runWithConcurrency(userTasks, concurrency)
     totalDownloaded = results.reduce((sum, count) => sum + count, 0)
@@ -480,13 +489,8 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
 
   // 动态导入避免循环依赖
   const { fetchVideoDetail, fetchUserProfileBySecUid } = await import('./douyin')
-  const {
-    getSetting,
-    getUserBySecUid,
-    createUser,
-    getPostByAwemeId,
-    createPost
-  } = await import('../database')
+  const { getSetting, getUserBySecUid, createUser, getPostByAwemeId, createPost } =
+    await import('../database')
 
   singleDownloadRunning = true
 
@@ -525,7 +529,11 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       return { success: false, error: '无法获取作者信息' }
     }
 
-    sendSingleProgress({ status: 'parsing', progress: 20, message: `已获取视频信息: ${videoDetail.desc?.slice(0, 30) || awemeId}` })
+    sendSingleProgress({
+      status: 'parsing',
+      progress: 20,
+      message: `已获取视频信息: ${videoDetail.desc?.slice(0, 30) || awemeId}`
+    })
 
     // 3. 检查是否已下载
     const existingPost = getPostByAwemeId(awemeId)
@@ -578,7 +586,11 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       }
     }
 
-    sendSingleProgress({ status: 'downloading', progress: 40, message: `正在下载视频 (作者: ${user.nickname})...` })
+    sendSingleProgress({
+      status: 'downloading',
+      progress: 40,
+      message: `正在下载视频 (作者: ${user.nickname})...`
+    })
 
     // 5. 准备下载目录
     const downloadPath = getDownloadPath()
@@ -599,12 +611,17 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
     try {
       sendSingleProgress({ status: 'downloading', progress: 50, message: '正在下载视频文件...' })
       // PostDetailFilter 有 toAwemeData() 方法，SharePageDetail 直接使用
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const awemeData = typeof (videoDetail as any).toAwemeData === 'function'
-        ? (videoDetail as any).toAwemeData()
-        : videoDetail
+
+      const awemeData =
+        typeof (videoDetail as any).toAwemeData === 'function'
+          ? (videoDetail as any).toAwemeData()
+          : videoDetail
       await downloader.createDownloadTasks(awemeData, userPath)
-      sendSingleProgress({ status: 'downloading', progress: 80, message: '下载完成，正在保存记录...' })
+      sendSingleProgress({
+        status: 'downloading',
+        progress: 80,
+        message: '下载完成，正在保存记录...'
+      })
     } catch (error) {
       const errMsg = `下载失败: ${(error as Error).message}`
       sendSingleProgress({ status: 'failed', progress: 0, message: errMsg })
@@ -638,7 +655,11 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       music_path: join(userPath, folderName)
     })
 
-    sendSingleProgress({ status: 'completed', progress: 100, message: `下载成功: ${videoDesc?.slice(0, 30) || awemeId}` })
+    sendSingleProgress({
+      status: 'completed',
+      progress: 100,
+      message: `下载成功: ${videoDesc?.slice(0, 30) || awemeId}`
+    })
 
     return { success: true, postId: post.id, userId: user.id }
   } catch (error) {

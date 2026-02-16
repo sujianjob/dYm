@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { Download, Home, Users, Sparkles, Settings, ScrollText, HardDrive, LayoutGrid } from 'lucide-react'
+import {
+  Download,
+  Home,
+  Users,
+  Sparkles,
+  Settings,
+  ScrollText,
+  HardDrive,
+  LayoutGrid
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -96,9 +105,7 @@ export function AppLayout() {
                     : 'text-[#6E6E73] hover:bg-[#F2F2F4]'
                 )}
               >
-                <Icon
-                  className={cn('h-5 w-5', active ? 'text-[#0A84FF]' : 'text-[#6E6E73]')}
-                />
+                <Icon className={cn('h-5 w-5', active ? 'text-[#0A84FF]' : 'text-[#6E6E73]')} />
                 <span className="text-sm">{item.label}</span>
               </Link>
             )

@@ -103,9 +103,7 @@ export function VideoDownloadDialog({ open, onOpenChange }: VideoDownloadDialogP
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>解析下载</DialogTitle>
-          <DialogDescription>
-            粘贴抖音作品链接，解析后下载视频或图集
-          </DialogDescription>
+          <DialogDescription>粘贴抖音作品链接，解析后下载视频或图集</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
