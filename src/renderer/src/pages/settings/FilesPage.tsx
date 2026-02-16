@@ -10,7 +10,9 @@ import {
   FolderOpen,
   ChevronDown,
   Search,
-  X
+  X,
+  Upload,
+  Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -31,6 +33,7 @@ import {
 } from '@/components/ui/context-menu'
 import { MediaViewer } from '@/components/MediaViewer'
 import { SortSelect, getInitialSort } from '@/components/SortSelect'
+import { PlaylistSelector } from '@/components/PlaylistSelector'
 
 const IMAGE_AWEME_TYPE = 68
 const PAGE_SIZE = 50
@@ -75,6 +78,14 @@ export default function FilesPage() {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  // YouTube 上传状态
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<YouTubeUploadProgress | null>(null)
+  const [youtubeFilter, setYoutubeFilter] = useState<'all' | 'uploaded' | 'not-uploaded'>('all')
+  const [selectedPlaylist, setSelectedPlaylist] = useState('')
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
+  const [validPostIds, setValidPostIds] = useState<number[]>([])
+
   const totalSize = users.reduce((sum, u) => sum + u.fileSize, 0)
   const totalFiles = users.reduce((sum, u) => sum + u.folderCount, 0)
 
@@ -117,6 +128,22 @@ export default function FilesPage() {
     if (showUserDropdown) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showUserDropdown])
+
+  // YouTube 进度订阅
+  useEffect(() => {
+    const unsubscribe = window.api.youtube.onProgress((progress) => {
+      setUploadProgress(progress)
+      if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled') {
+        setIsUploading(false)
+        setTimeout(() => setUploadProgress(null), 3000)
+        // 刷新列表
+        if (progress.status === 'completed') {
+          reloadCurrentUser()
+        }
+      }
+    })
+    return unsubscribe
+  }, [])
 
   const loadUsers = async () => {
     setLoading(true)
@@ -243,6 +270,57 @@ export default function FilesPage() {
     }
   }
 
+  const handleBatchUpload = async () => {
+    if (selectedIds.size === 0) {
+      toast.error('请先选择要上传的视频')
+      return
+    }
+    const authenticated = await window.api.youtube.isAuthenticated()
+    if (!authenticated) {
+      toast.error('请先在设置页面连接 YouTube 账号')
+      return
+    }
+    // 过滤掉图集和已上传的视频
+    const validIds: number[] = []
+    for (const id of selectedIds) {
+      const post = posts.find((p) => p.id === id)
+      if (post && post.aweme_type !== IMAGE_AWEME_TYPE && post.youtube_uploaded !== 1) {
+        validIds.push(id)
+      }
+    }
+    if (validIds.length === 0) {
+      toast.error('所选作品中没有可上传的视频')
+      return
+    }
+    // 显示播放列表选择对话框
+    setValidPostIds(validIds)
+    setShowPlaylistDialog(true)
+  }
+
+  const confirmBatchUpload = async () => {
+    setShowPlaylistDialog(false)
+    setIsUploading(true)
+    setUploadProgress(null)
+    try {
+      await window.api.youtube.uploadBatch(
+        validPostIds,
+        selectedPlaylist || undefined
+      )
+    } catch (error) {
+      toast.error(`批量上传启动失败: ${(error as Error).message}`)
+      setIsUploading(false)
+    }
+  }
+
+  const handleCancelUpload = async () => {
+    try {
+      await window.api.youtube.cancelUpload()
+      toast.info('正在取消上传...')
+    } catch (error) {
+      toast.error(`取消失败: ${(error as Error).message}`)
+    }
+  }
+
   const handleConfirmDelete = async () => {
     if (!deleteConfirm) return
     if (deleteConfirm.type === 'post' && deleteConfirm.id) {
@@ -264,8 +342,8 @@ export default function FilesPage() {
   }
 
   const selectAll = () => {
-    if (selectedIds.size === posts.length) setSelectedIds(new Set())
-    else setSelectedIds(new Set(posts.map((p) => p.id)))
+    if (selectedIds.size === filteredPosts.length) setSelectedIds(new Set())
+    else setSelectedIds(new Set(filteredPosts.map((p) => p.id)))
   }
 
   const getCoverUrl = (post: DbPost) => {
@@ -290,6 +368,12 @@ export default function FilesPage() {
     return users.filter((u) => u.nickname.toLowerCase().includes(s))
   })()
 
+  const filteredPosts = (() => {
+    if (youtubeFilter === 'all') return posts
+    if (youtubeFilter === 'uploaded') return posts.filter((p) => p.youtube_uploaded === 1)
+    return posts.filter((p) => p.youtube_uploaded !== 1)
+  })()
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -302,15 +386,40 @@ export default function FilesPage() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteConfirm({ type: 'batch', count: selectedIds.size })}
-              className="border-red-200 text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              删除选中 ({selectedIds.size})
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={isUploading ? handleCancelUpload : handleBatchUpload}
+                disabled={isUploading && !uploadProgress}
+                className={
+                  isUploading
+                    ? 'border-red-200 text-red-600 hover:bg-red-50'
+                    : 'border-[#0A84FF] text-[#0A84FF] hover:bg-blue-50'
+                }
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    取消上传
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    批量上传到 YouTube ({selectedIds.size})
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteConfirm({ type: 'batch', count: selectedIds.size })}
+                className="border-red-200 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                删除选中 ({selectedIds.size})
+              </Button>
+            </>
           )}
           {selectedUser && (
             <Button
@@ -328,7 +437,7 @@ export default function FilesPage() {
 
       {/* Filter Bar */}
       <div className="px-6 py-3 bg-[#F5F5F7] border-b border-[#E5E5E7]">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* User Selector */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -404,15 +513,64 @@ export default function FilesPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <Checkbox
-                  checked={selectedIds.size === posts.length && posts.length > 0}
+                  checked={selectedIds.size === filteredPosts.length && filteredPosts.length > 0}
                   onCheckedChange={selectAll}
                 />
-                <span className="text-sm text-[#6E6E73]">全选 ({posts.length})</span>
+                <span className="text-sm text-[#6E6E73]">全选 ({filteredPosts.length})</span>
+              </div>
+              {/* YouTube 过滤器 */}
+              <div className="flex items-center gap-1 border-l border-[#D1D1D6] pl-3">
+                <button
+                  onClick={() => setYoutubeFilter('all')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${youtubeFilter === 'all' ? 'bg-[#0A84FF] text-white' : 'text-[#6E6E73] hover:bg-[#E5E5E7]'}`}
+                >
+                  全部
+                </button>
+                <button
+                  onClick={() => setYoutubeFilter('uploaded')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${youtubeFilter === 'uploaded' ? 'bg-[#34C759] text-white' : 'text-[#6E6E73] hover:bg-[#E5E5E7]'}`}
+                >
+                  已上传
+                </button>
+                <button
+                  onClick={() => setYoutubeFilter('not-uploaded')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${youtubeFilter === 'not-uploaded' ? 'bg-[#8E8E93] text-white' : 'text-[#6E6E73] hover:bg-[#E5E5E7]'}`}
+                >
+                  未上传
+                </button>
               </div>
               <SortSelect value={sort} onChange={setSort} storageKey={SORT_STORAGE_KEY} />
             </div>
           )}
         </div>
+
+        {/* YouTube 上传进度条 */}
+        {uploadProgress && uploadProgress.status !== 'completed' && (
+          <div className="mt-3 p-3 bg-white rounded-lg border border-[#E5E5E7]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-[#1D1D1F]">
+                {uploadProgress.status === 'preparing' && '准备上传...'}
+                {uploadProgress.status === 'uploading' && `上传中: ${uploadProgress.currentPost}`}
+                {uploadProgress.status === 'processing' && '处理中...'}
+                {uploadProgress.status === 'failed' && '上传失败'}
+                {uploadProgress.status === 'cancelled' && '已取消'}
+              </span>
+              <span className="text-xs text-[#6E6E73]">
+                {uploadProgress.uploadedCount}/{uploadProgress.totalPosts}
+                {uploadProgress.failedCount > 0 && ` (失败: ${uploadProgress.failedCount})`}
+              </span>
+            </div>
+            <div className="h-2 bg-[#F2F2F4] rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${uploadProgress.status === 'failed' ? 'bg-red-500' : uploadProgress.status === 'cancelled' ? 'bg-[#8E8E93]' : 'bg-[#0A84FF]'}`}
+                style={{ width: `${uploadProgress.progress}%` }}
+              />
+            </div>
+            {uploadProgress.message && (
+              <p className="text-xs text-[#6E6E73] mt-1">{uploadProgress.message}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -451,7 +609,7 @@ export default function FilesPage() {
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 pt-4">
-                {posts.map((post) => (
+                {filteredPosts.map((post) => (
                   <ContextMenu key={post.id}>
                     <ContextMenuTrigger asChild>
                       <Card
@@ -516,6 +674,13 @@ export default function FilesPage() {
                           <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             {isImagePost(post) ? '图集' : '视频'}
                           </div>
+                          {/* YouTube 上传状态 */}
+                          {post.youtube_uploaded === 1 && !isImagePost(post) && (
+                            <div className="absolute top-2 left-14 bg-[#34C759] text-white text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                              <Check className="h-3 w-3" />
+                              YouTube
+                            </div>
+                          )}
                           {post.create_time && (
                             <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                               {formatDate(post.create_time)}
@@ -600,6 +765,40 @@ export default function FilesPage() {
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
               确认删除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Playlist Selection Dialog */}
+      <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>选择播放列表</DialogTitle>
+            <DialogDescription>
+              将 {validPostIds.length} 个视频上传到 YouTube，可选择添加到播放列表
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <PlaylistSelector
+              value={selectedPlaylist}
+              onChange={setSelectedPlaylist}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-3 px-1">
+              提示：您可以选择一个播放列表，或选择"不添加到播放列表"直接上传视频
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPlaylistDialog(false)}
+            >
+              取消
+            </Button>
+            <Button onClick={confirmBatchUpload} className="bg-[#0A84FF] hover:bg-[#0060D5]">
+              <Upload className="h-4 w-4 mr-2" />
+              开始上传
             </Button>
           </DialogFooter>
         </DialogContent>

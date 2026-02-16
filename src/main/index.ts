@@ -1,7 +1,27 @@
-import { app, shell, BrowserWindow, ipcMain, protocol, net, dialog, Tray, Menu, nativeImage, clipboard } from 'electron'
+import {
+  app,
+  shell,
+  BrowserWindow,
+  ipcMain,
+  protocol,
+  net,
+  dialog,
+  Tray,
+  Menu,
+  nativeImage,
+  clipboard
+} from 'electron'
 import os from 'os'
 import { join } from 'path'
-import { existsSync, readdirSync, createWriteStream, createReadStream, statSync, cpSync, rmSync } from 'fs'
+import {
+  existsSync,
+  readdirSync,
+  createWriteStream,
+  createReadStream,
+  statSync,
+  cpSync,
+  rmSync
+} from 'fs'
 import { mkdir } from 'fs/promises'
 import { pipeline } from 'stream/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
@@ -57,8 +77,24 @@ import {
 import { startDownloadTask, stopDownloadTask, isTaskRunning } from './services/downloader'
 import { startAnalysis, stopAnalysis, isAnalysisRunning } from './services/analyzer'
 import { initUpdater, registerUpdaterHandlers } from './services/updater'
-import { startUserSync, stopUserSync, isUserSyncing, getAnyUserSyncing, getAllSyncingUserIds } from './services/syncer'
-import { initScheduler, stopScheduler, scheduleUser, unscheduleUser, scheduleTask, unscheduleTask, validateCronExpression, getSchedulerLogs, clearSchedulerLogs } from './services/scheduler'
+import {
+  startUserSync,
+  stopUserSync,
+  isUserSyncing,
+  getAnyUserSyncing,
+  getAllSyncingUserIds
+} from './services/syncer'
+import {
+  initScheduler,
+  stopScheduler,
+  scheduleUser,
+  unscheduleUser,
+  scheduleTask,
+  unscheduleTask,
+  validateCronExpression,
+  getSchedulerLogs,
+  clearSchedulerLogs
+} from './services/scheduler'
 import {
   getUnanalyzedPostsCount,
   getUnanalyzedPostsCountByUser,
@@ -424,9 +460,10 @@ app.whenReady().then(() => {
 
       // 无 Range 请求时返回完整文件
       // Windows 需要 file:/// 格式，并将反斜杠转换为正斜杠
-      const fileUrl = process.platform === 'win32'
-        ? `file:///${filePath.replace(/\\/g, '/')}`
-        : `file://${filePath}`
+      const fileUrl =
+        process.platform === 'win32'
+          ? `file:///${filePath.replace(/\\/g, '/')}`
+          : `file://${filePath}`
       return net.fetch(fileUrl)
     } catch {
       return new Response('File not found', { status: 404 })
@@ -593,12 +630,16 @@ app.whenReady().then(() => {
     }
     return result
   })
-  ipcMain.handle('user:setShowInHome', (_event, id: number, show: boolean) => setUserShowInHome(id, show))
+  ipcMain.handle('user:setShowInHome', (_event, id: number, show: boolean) =>
+    setUserShowInHome(id, show)
+  )
   ipcMain.handle('user:updateSettings', (_event, id: number, input: UpdateUserSettingsInput) =>
     updateUserSettings(id, input)
   )
-  ipcMain.handle('user:batchUpdateSettings', (_event, ids: number[], input: Omit<UpdateUserSettingsInput, 'remark'>) =>
-    batchUpdateUserSettings(ids, input)
+  ipcMain.handle(
+    'user:batchUpdateSettings',
+    (_event, ids: number[], input: Omit<UpdateUserSettingsInput, 'remark'>) =>
+      batchUpdateUserSettings(ids, input)
   )
   ipcMain.handle('user:refresh', async (_event, id: number, url: string) => {
     const profileRes = await fetchUserProfile(url)
@@ -671,7 +712,13 @@ app.whenReady().then(() => {
     (
       _event,
       id: number,
-      input: Partial<{ name: string; status: string; concurrency: number; auto_sync: boolean; sync_cron: string }>
+      input: Partial<{
+        name: string
+        status: string
+        concurrency: number
+        auto_sync: boolean
+        sync_cron: string
+      }>
     ) => {
       const dbInput: Parameters<typeof updateTask>[1] = {}
       if (input.name !== undefined) dbInput.name = input.name
@@ -695,8 +742,10 @@ app.whenReady().then(() => {
   ipcMain.handle('post:getCoverPath', (_event, secUid: string, folderName: string) =>
     findCoverFile(secUid, folderName)
   )
-  ipcMain.handle('post:getMediaFiles', (_event, secUid: string, folderName: string, awemeType: number) =>
-    findMediaFiles(secUid, folderName, awemeType)
+  ipcMain.handle(
+    'post:getMediaFiles',
+    (_event, secUid: string, folderName: string, awemeType: number) =>
+      findMediaFiles(secUid, folderName, awemeType)
   )
   ipcMain.handle('post:openFolder', (_event, secUid: string, folderName: string) => {
     const folderPath = join(getDownloadPath(), secUid, folderName)
@@ -712,8 +761,10 @@ app.whenReady().then(() => {
   })
 
   // Files management IPC handlers
-  ipcMain.handle('files:getUserPosts', (_event, userId: number, page?: number, pageSize?: number, sort?: SortConfig) =>
-    getPostsByUserId(userId, page, pageSize, sort)
+  ipcMain.handle(
+    'files:getUserPosts',
+    (_event, userId: number, page?: number, pageSize?: number, sort?: SortConfig) =>
+      getPostsByUserId(userId, page, pageSize, sort)
   )
 
   ipcMain.handle('files:getFileSizes', (_event, secUid: string) => {
@@ -732,10 +783,14 @@ app.whenReady().then(() => {
         for (const file of files) {
           try {
             totalSize += statSync(join(folderPath, file)).size
-          } catch { /* skip */ }
+          } catch {
+            /* skip */
+          }
         }
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
     return { totalSize, folderCount }
   })
 
@@ -746,9 +801,15 @@ app.whenReady().then(() => {
     try {
       const files = readdirSync(folderPath)
       for (const file of files) {
-        try { total += statSync(join(folderPath, file)).size } catch { /* skip */ }
+        try {
+          total += statSync(join(folderPath, file)).size
+        } catch {
+          /* skip */
+        }
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
     return total
   })
 
@@ -801,7 +862,9 @@ app.whenReady().then(() => {
   ipcMain.handle('sync:isRunning', (_event, userId: number) => isUserSyncing(userId))
   ipcMain.handle('sync:getAnySyncing', () => getAnyUserSyncing())
   ipcMain.handle('sync:getAllSyncing', () => getAllSyncingUserIds())
-  ipcMain.handle('sync:validateCron', (_event, expression: string) => validateCronExpression(expression))
+  ipcMain.handle('sync:validateCron', (_event, expression: string) =>
+    validateCronExpression(expression)
+  )
   ipcMain.handle('sync:updateUserSchedule', (_event, userId: number) => {
     const user = getUserById(userId)
     if (user) {
@@ -863,7 +926,7 @@ app.whenReady().then(() => {
 
   // Video IPC handlers
   ipcMain.handle('video:getDetail', async (_event, url: string) => {
-    const detail = await fetchVideoDetail(url) as {
+    const detail = (await fetchVideoDetail(url)) as {
       awemeId?: string
       awemeType?: number
       desc?: string
@@ -883,61 +946,68 @@ app.whenReady().then(() => {
       nickname: detail.nickname || '',
       coverUrl,
       type: isImages ? 'images' : 'video',
-      videoUrl: isImages ? undefined : (detail.videoPlayAddr?.[0] || ''),
-      imageUrls: isImages ? (detail.images || []) : undefined
+      videoUrl: isImages ? undefined : detail.videoPlayAddr?.[0] || '',
+      imageUrls: isImages ? detail.images || [] : undefined
     }
   })
 
-  ipcMain.handle('video:downloadToFolder', async (_event, info: {
-    awemeId: string
-    desc: string
-    nickname: string
-    type: 'video' | 'images'
-    videoUrl?: string
-    imageUrls?: string[]
-  }) => {
-    const result = await dialog.showOpenDialog({
-      title: '选择保存目录',
-      properties: ['openDirectory', 'createDirectory']
-    })
-
-    if (result.canceled || !result.filePaths[0]) {
-      throw new Error('已取消')
-    }
-
-    const savePath = result.filePaths[0]
-    const folderName = `${info.nickname}_${info.awemeId}`
-    const folderPath = join(savePath, folderName)
-
-    await mkdir(folderPath, { recursive: true })
-
-    const cookie = getSetting('douyin_cookie') || ''
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer': 'https://www.douyin.com/',
-      'Cookie': cookie
-    }
-
-    if (info.type === 'video' && info.videoUrl) {
-      const videoPath = join(folderPath, `${info.awemeId}.mp4`)
-      const response = await fetch(info.videoUrl, { headers })
-      if (!response.ok || !response.body) throw new Error('下载视频失败')
-      const fileStream = createWriteStream(videoPath)
-      await pipeline(response.body as unknown as NodeJS.ReadableStream, fileStream)
-    } else if (info.type === 'images' && info.imageUrls) {
-      for (let i = 0; i < info.imageUrls.length; i++) {
-        const imgUrl = info.imageUrls[i]
-        const ext = imgUrl.includes('.webp') ? 'webp' : 'jpg'
-        const imgPath = join(folderPath, `${info.awemeId}_${i + 1}.${ext}`)
-        const response = await fetch(imgUrl, { headers })
-        if (!response.ok || !response.body) continue
-        const fileStream = createWriteStream(imgPath)
-        await pipeline(response.body as unknown as NodeJS.ReadableStream, fileStream)
+  ipcMain.handle(
+    'video:downloadToFolder',
+    async (
+      _event,
+      info: {
+        awemeId: string
+        desc: string
+        nickname: string
+        type: 'video' | 'images'
+        videoUrl?: string
+        imageUrls?: string[]
       }
-    }
+    ) => {
+      const result = await dialog.showOpenDialog({
+        title: '选择保存目录',
+        properties: ['openDirectory', 'createDirectory']
+      })
 
-    shell.openPath(folderPath)
-  })
+      if (result.canceled || !result.filePaths[0]) {
+        throw new Error('已取消')
+      }
+
+      const savePath = result.filePaths[0]
+      const folderName = `${info.nickname}_${info.awemeId}`
+      const folderPath = join(savePath, folderName)
+
+      await mkdir(folderPath, { recursive: true })
+
+      const cookie = getSetting('douyin_cookie') || ''
+      const headers = {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Referer: 'https://www.douyin.com/',
+        Cookie: cookie
+      }
+
+      if (info.type === 'video' && info.videoUrl) {
+        const videoPath = join(folderPath, `${info.awemeId}.mp4`)
+        const response = await fetch(info.videoUrl, { headers })
+        if (!response.ok || !response.body) throw new Error('下载视频失败')
+        const fileStream = createWriteStream(videoPath)
+        await pipeline(response.body as unknown as NodeJS.ReadableStream, fileStream)
+      } else if (info.type === 'images' && info.imageUrls) {
+        for (let i = 0; i < info.imageUrls.length; i++) {
+          const imgUrl = info.imageUrls[i]
+          const ext = imgUrl.includes('.webp') ? 'webp' : 'jpg'
+          const imgPath = join(folderPath, `${info.awemeId}_${i + 1}.${ext}`)
+          const response = await fetch(imgUrl, { headers })
+          if (!response.ok || !response.body) continue
+          const fileStream = createWriteStream(imgPath)
+          await pipeline(response.body as unknown as NodeJS.ReadableStream, fileStream)
+        }
+      }
+
+      shell.openPath(folderPath)
+    }
+  )
 
   // Single video download (saves to database)
   ipcMain.handle('video:downloadSingle', async (_event, url: string) => {
@@ -1133,9 +1203,72 @@ app.whenReady().then(() => {
   // Dashboard
   ipcMain.handle('dashboard:getOverview', () => getDashboardOverview())
   ipcMain.handle('dashboard:getDownloadTrend', (_event, days?: number) => getDownloadTrend(days))
-  ipcMain.handle('dashboard:getUserDistribution', (_event, limit?: number) => getUserVideoDistribution(limit))
+  ipcMain.handle('dashboard:getUserDistribution', (_event, limit?: number) =>
+    getUserVideoDistribution(limit)
+  )
   ipcMain.handle('dashboard:getTopTags', (_event, limit?: number) => getTopTags(limit))
   ipcMain.handle('dashboard:getContentLevelDistribution', () => getContentLevelDistribution())
+
+  // YouTube
+  ipcMain.handle('youtube:startAuth', async () => {
+    const { startOAuthFlow } = await import('./services/youtube')
+    return startOAuthFlow()
+  })
+
+  ipcMain.handle('youtube:logout', async () => {
+    const { logout } = await import('./services/youtube')
+    return logout()
+  })
+
+  ipcMain.handle('youtube:isAuthenticated', async () => {
+    const { isAuthenticated } = await import('./services/youtube')
+    return isAuthenticated()
+  })
+
+  ipcMain.handle('youtube:getChannelInfo', async () => {
+    const { getChannelInfo } = await import('./services/youtube')
+    return getChannelInfo()
+  })
+
+  ipcMain.handle('youtube:listPlaylists', async () => {
+    const { listUserPlaylists } = await import('./services/youtube')
+    return listUserPlaylists()
+  })
+
+  ipcMain.handle(
+    'youtube:uploadVideo',
+    async (
+      _event,
+      request: {
+        postId: number
+        title?: string
+        description?: string
+        tags?: string[]
+        privacy?: 'public' | 'private' | 'unlisted'
+        category?: string
+      }
+    ) => {
+      const { uploadToYouTube, setMainWindow } = await import('./services/youtube')
+      if (mainWindow) setMainWindow(mainWindow)
+      return uploadToYouTube(request.postId, request)
+    }
+  )
+
+  ipcMain.handle('youtube:uploadBatch', async (_event, postIds: number[], playlistId?: string) => {
+    const { uploadBatch, setMainWindow } = await import('./services/youtube')
+    if (mainWindow) setMainWindow(mainWindow)
+    return uploadBatch(postIds, playlistId)
+  })
+
+  ipcMain.handle('youtube:cancelUpload', async () => {
+    const { cancelUpload } = await import('./services/youtube')
+    return cancelUpload()
+  })
+
+  ipcMain.handle('youtube:isUploading', async () => {
+    const { getIsUploading } = await import('./services/youtube')
+    return getIsUploading()
+  })
 
   // 创建托盘图标
   createTray()

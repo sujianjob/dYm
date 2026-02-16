@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, X, Play, Heart, MessageCircle, Volume2, VolumeX, Download, Film, Clock } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Play,
+  Heart,
+  MessageCircle,
+  Volume2,
+  VolumeX,
+  Download,
+  Film,
+  Clock,
+  Upload,
+  Check
+} from 'lucide-react'
 import { toast } from 'sonner'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
+import { Button } from './ui/button'
+import { PlaylistSelector } from './PlaylistSelector'
 
 interface MediaViewerProps {
   post: DbPost | null
@@ -8,16 +25,30 @@ interface MediaViewerProps {
   onOpenChange: (open: boolean) => void
   allPosts?: DbPost[]
   onSelectPost?: (post: DbPost) => void
+  onPostUpdated?: (post: DbPost) => void
 }
 
-export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectPost }: MediaViewerProps) {
+export function MediaViewer({
+  post,
+  open,
+  onOpenChange,
+  allPosts = [],
+  onSelectPost,
+  onPostUpdated
+}: MediaViewerProps) {
   const [media, setMedia] = useState<MediaFiles | null>(null)
   const [loading, setLoading] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
   const [recommendCovers, setRecommendCovers] = useState<Map<number, string>>(new Map())
   const [isMerging, setIsMerging] = useState(false)
-  const [mergeProgress, setMergeProgress] = useState<{ status: string; message: string } | null>(null)
+  const [mergeProgress, setMergeProgress] = useState<{ status: string; message: string } | null>(
+    null
+  )
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<YouTubeUploadProgress | null>(null)
+  const [selectedPlaylist, setSelectedPlaylist] = useState('')
+  const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
@@ -51,11 +82,23 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
     return unsubscribe
   }, [])
 
+  // Subscribe to YouTube upload progress
+  useEffect(() => {
+    const unsubscribe = window.api.youtube.onProgress((progress) => {
+      setUploadProgress(progress)
+      if (progress.status === 'completed' || progress.status === 'failed') {
+        setIsUploading(false)
+        setTimeout(() => setUploadProgress(null), 3000)
+      }
+    })
+    return unsubscribe
+  }, [])
+
   // 相关推荐算法：多样化推荐（同标签优先，但保证作者多样性）
   const recommendations = useMemo(() => {
     if (!post || allPosts.length === 0) return []
 
-    const currentTags = post.analysis_tags ? JSON.parse(post.analysis_tags) as string[] : []
+    const currentTags = post.analysis_tags ? (JSON.parse(post.analysis_tags) as string[]) : []
     const currentSecUid = post.sec_uid
     const result: DbPost[] = []
     const usedIds = new Set<number>([post.id])
@@ -68,7 +111,7 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
       const sameTagOtherAuthor = candidates
         .filter((p) => {
           if (p.sec_uid === currentSecUid) return false
-          const tags = p.analysis_tags ? JSON.parse(p.analysis_tags) as string[] : []
+          const tags = p.analysis_tags ? (JSON.parse(p.analysis_tags) as string[]) : []
           return tags.some((t) => currentTags.includes(t))
         })
         .slice(0, 2)
@@ -135,7 +178,11 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
     if (!post) return
     setLoading(true)
     try {
-      console.log('Loading media for:', { sec_uid: post.sec_uid, folder_name: post.folder_name, aweme_type: post.aweme_type })
+      console.log('Loading media for:', {
+        sec_uid: post.sec_uid,
+        folder_name: post.folder_name,
+        aweme_type: post.aweme_type
+      })
       const result = await window.api.post.getMediaFiles(
         post.sec_uid,
         post.folder_name,
@@ -231,13 +278,69 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
     }
   }
 
+  // Handle upload to YouTube
+  const handleUploadToYouTube = async () => {
+    if (!post || isUploading || post.youtube_uploaded === 1) return
+
+    // Check if authenticated
+    const authenticated = await window.api.youtube.isAuthenticated()
+    if (!authenticated) {
+      toast.error('请先在设置页面连接 YouTube 账号')
+      return
+    }
+
+    // 显示播放列表选择对话框
+    setShowPlaylistDialog(true)
+  }
+
+  const confirmUploadToYouTube = async () => {
+    if (!post) return
+
+    setShowPlaylistDialog(false)
+    setIsUploading(true)
+    setUploadProgress(null)
+    try {
+      const result = await window.api.youtube.uploadVideo({
+        postId: post.id,
+        playlistId: selectedPlaylist || undefined
+      })
+      if (result.success) {
+        toast.success('上传成功')
+        // Refresh post data
+        if (onPostUpdated) {
+          const updatedPost = { ...post, youtube_uploaded: 1, youtube_video_id: result.videoId }
+          onPostUpdated(updatedPost as DbPost)
+        }
+      } else {
+        toast.error(result.error || '上传失败')
+      }
+    } catch (error) {
+      toast.error(`上传失败: ${(error as Error).message}`)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // Handle cancel YouTube upload
+  const handleCancelUpload = async () => {
+    try {
+      await window.api.youtube.cancelUpload()
+      toast.info('已取消上传')
+    } catch (error) {
+      console.error('Failed to cancel upload:', error)
+    }
+  }
+
   // 解析标签
-  const tags = post?.analysis_tags ? JSON.parse(post.analysis_tags) as string[] : []
+  const tags = post?.analysis_tags ? (JSON.parse(post.analysis_tags) as string[]) : []
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => onOpenChange(false)}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      onClick={() => onOpenChange(false)}
+    >
       <div
         className="flex bg-white rounded-2xl overflow-hidden shadow-xl border border-[#E5E5E7]"
         style={{ width: 780, height: 520 }}
@@ -393,7 +496,12 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
             <div className="flex gap-2 mt-2">
               <button
                 onClick={isMerging ? handleCancelMerge : handleMerge}
-                disabled={isMerging && mergeProgress?.status !== 'preparing' && mergeProgress?.status !== 'converting' && mergeProgress?.status !== 'merging'}
+                disabled={
+                  isMerging &&
+                  mergeProgress?.status !== 'preparing' &&
+                  mergeProgress?.status !== 'converting' &&
+                  mergeProgress?.status !== 'merging'
+                }
                 className={`flex-1 h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
                   isMerging
                     ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
@@ -414,7 +522,12 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
               </button>
               <button
                 onClick={isMerging ? handleCancelMerge : handleExtendFirstFrame}
-                disabled={isMerging && mergeProgress?.status !== 'preparing' && mergeProgress?.status !== 'converting' && mergeProgress?.status !== 'merging'}
+                disabled={
+                  isMerging &&
+                  mergeProgress?.status !== 'preparing' &&
+                  mergeProgress?.status !== 'converting' &&
+                  mergeProgress?.status !== 'merging'
+                }
                 className={`flex-1 h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
                   isMerging
                     ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
@@ -438,9 +551,46 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
 
           {/* 合并进度显示 */}
           {isMerging && mergeProgress && (
-            <div className="mt-2 text-xs text-[#6E6E73] text-center">
-              {mergeProgress.message}
+            <div className="mt-2 text-xs text-[#6E6E73] text-center">{mergeProgress.message}</div>
+          )}
+
+          {/* YouTube 上传按钮 */}
+          {post?.aweme_type !== 68 && (
+            <div className="mt-2">
+              <button
+                onClick={isUploading ? handleCancelUpload : handleUploadToYouTube}
+                disabled={post?.youtube_uploaded === 1 || (isUploading && !uploadProgress)}
+                className={`w-full h-11 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                  post?.youtube_uploaded === 1
+                    ? 'bg-[#E3F9E8] text-[#30D158] cursor-default'
+                    : isUploading
+                      ? 'bg-[#FF3B30] hover:bg-[#E5352A] text-white'
+                      : 'bg-[#FF0000] hover:bg-[#CC0000] text-white'
+                }`}
+              >
+                {post?.youtube_uploaded === 1 ? (
+                  <>
+                    <Check className="h-4 w-4" />
+                    已上传 YouTube
+                  </>
+                ) : isUploading ? (
+                  <>
+                    <X className="h-4 w-4" />
+                    取消上传
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    上传 YouTube
+                  </>
+                )}
+              </button>
             </div>
+          )}
+
+          {/* YouTube 上传进度显示 */}
+          {isUploading && uploadProgress && (
+            <div className="mt-2 text-xs text-[#6E6E73] text-center">{uploadProgress.message}</div>
           )}
 
           {/* 相关推荐 */}
@@ -482,6 +632,40 @@ export function MediaViewer({ post, open, onOpenChange, allPosts = [], onSelectP
           </div>
         </div>
       </div>
+
+      {/* Playlist Selection Dialog */}
+      <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>选择播放列表</DialogTitle>
+            <DialogDescription>
+              上传视频到 YouTube，可选择添加到播放列表
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <PlaylistSelector
+              value={selectedPlaylist}
+              onChange={setSelectedPlaylist}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground mt-3 px-1">
+              提示：您可以选择一个播放列表，或选择"不添加到播放列表"直接上传视频
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPlaylistDialog(false)}
+            >
+              取消
+            </Button>
+            <Button onClick={confirmUploadToYouTube} className="bg-[#FF0000] hover:bg-[#CC0000]">
+              <Upload className="h-4 w-4 mr-2" />
+              开始上传
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

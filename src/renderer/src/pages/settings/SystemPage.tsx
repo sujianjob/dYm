@@ -11,6 +11,7 @@ import {
   Database,
   X
 } from 'lucide-react'
+import { PlaylistSelector } from '@renderer/components/PlaylistSelector'
 
 export default function SystemPage() {
   // Cookie
@@ -42,11 +43,18 @@ export default function SystemPage() {
   const [analysisSlices, setAnalysisSlices] = useState('4')
   const [analysisPrompt, setAnalysisPrompt] = useState('')
 
-
   // 更新
   const [currentVersion, setCurrentVersion] = useState('')
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+
+  // YouTube
+  const [youtubeClientId, setYoutubeClientId] = useState('')
+  const [youtubeClientSecret, setYoutubeClientSecret] = useState('')
+  const [youtubeAuthenticated, setYoutubeAuthenticated] = useState(false)
+  const [youtubeChannel, setYoutubeChannel] = useState<YouTubeChannelInfo | null>(null)
+  const [loadingYoutube, setLoadingYoutube] = useState(false)
+  const [youtubeDefaultPlaylist, setYoutubeDefaultPlaylist] = useState('')
 
   useEffect(() => {
     loadSettings()
@@ -88,6 +96,12 @@ export default function SystemPage() {
     setAnalysisModel(settings.analysis_model || 'grok-4-fast')
     setAnalysisSlices(settings.analysis_slices || '4')
     setAnalysisPrompt(settings.analysis_prompt || '')
+    setYoutubeClientId(settings.youtube_client_id || '')
+    setYoutubeClientSecret(settings.youtube_client_secret || '')
+    setYoutubeDefaultPlaylist(settings.youtube_default_playlist_id || '')
+
+    // 加载 YouTube 认证状态
+    loadYoutubeAuth()
   }
 
   // Cookie handlers
@@ -144,10 +158,76 @@ export default function SystemPage() {
     }
   }
 
+  // YouTube handlers
+  const loadYoutubeAuth = async () => {
+    try {
+      const authenticated = await window.api.youtube.isAuthenticated()
+      setYoutubeAuthenticated(authenticated)
+      if (authenticated) {
+        const channelInfo = await window.api.youtube.getChannelInfo()
+        setYoutubeChannel(channelInfo)
+      }
+    } catch (error) {
+      console.error('Failed to load YouTube auth:', error)
+    }
+  }
+
+  const handleSaveYoutubeCredentials = async () => {
+    if (!youtubeClientId.trim() || !youtubeClientSecret.trim()) {
+      toast.error('请填写完整的 Client ID 和 Client Secret')
+      return
+    }
+    try {
+      await window.api.settings.set('youtube_client_id', youtubeClientId)
+      await window.api.settings.set('youtube_client_secret', youtubeClientSecret)
+      toast.success('YouTube 凭据已保存')
+    } catch {
+      toast.error('保存失败')
+    }
+  }
+
+  const handleYoutubeAuth = async () => {
+    setLoadingYoutube(true)
+    try {
+      const result = await window.api.youtube.startAuth()
+      if (result.success) {
+        toast.success('YouTube 认证成功')
+        await loadYoutubeAuth()
+      } else {
+        toast.error(result.error || '认证失败')
+      }
+    } catch (error) {
+      toast.error(`认证失败: ${(error as Error).message}`)
+    } finally {
+      setLoadingYoutube(false)
+    }
+  }
+
+  const handleYoutubeLogout = async () => {
+    try {
+      await window.api.youtube.logout()
+      setYoutubeAuthenticated(false)
+      setYoutubeChannel(null)
+      toast.success('已退出 YouTube 账号')
+    } catch {
+      toast.error('退出失败')
+    }
+  }
+
+  const handleSaveDefaultPlaylist = async () => {
+    try {
+      await window.api.settings.set('youtube_default_playlist_id', youtubeDefaultPlaylist)
+      toast.success('默认播放列表已保存')
+    } catch {
+      toast.error('保存失败')
+    }
+  }
+
   // Download handlers
   const handleSaveDownload = async () => {
     try {
-      const oldPath = originalDownloadPath.current || await window.api.settings.getDefaultDownloadPath()
+      const oldPath =
+        originalDownloadPath.current || (await window.api.settings.getDefaultDownloadPath())
       const newPath = downloadPath
 
       if (newPath && oldPath !== newPath) {
@@ -249,7 +329,6 @@ export default function SystemPage() {
   const handleInstallUpdate = () => {
     window.api.updater.install()
   }
-
 
   return (
     <div className="flex flex-col h-full">
@@ -369,6 +448,152 @@ export default function SystemPage() {
                 </div>
               </div>
             </div>
+
+            {/* YouTube Configuration Card */}
+            <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-6 mt-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h2 className="text-base font-semibold text-[#1D1D1F]">YouTube 上传</h2>
+                  <p className="text-xs text-[#A1A1A6] mt-1">配置 OAuth2 凭据以启用视频上传到 YouTube</p>
+                </div>
+                {youtubeAuthenticated && youtubeChannel && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#E3F9E8] rounded-lg">
+                    <CheckCircle className="h-4 w-4 text-[#30D158]" />
+                    <span className="text-xs font-medium text-[#30D158]">已连接</span>
+                  </div>
+                )}
+              </div>
+
+              {youtubeAuthenticated && youtubeChannel ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4 p-4 bg-[#F5F5F7] rounded-lg">
+                    {youtubeChannel.thumbnailUrl && (
+                      <img
+                        src={youtubeChannel.thumbnailUrl}
+                        alt={youtubeChannel.title}
+                        className="w-12 h-12 rounded-full"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-[#1D1D1F]">{youtubeChannel.title}</p>
+                      <p className="text-xs text-[#A1A1A6] mt-0.5">{youtubeChannel.id}</p>
+                    </div>
+                    <button
+                      onClick={handleYoutubeLogout}
+                      className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      断开连接
+                    </button>
+                  </div>
+                  <p className="text-xs text-[#6E6E73]">
+                    提示: 可在「内容浏览」或「文件管理」页面选择视频上传到此频道
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Client ID */}
+                  <div>
+                    <label className="text-sm text-[#1D1D1F] mb-2 block">Client ID</label>
+                    <input
+                      type="text"
+                      value={youtubeClientId}
+                      onChange={(e) => setYoutubeClientId(e.target.value)}
+                      placeholder="从 Google Cloud Console 获取"
+                      className="w-full h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] font-mono transition-colors focus:outline-none focus-visible:border-[#0A84FF] focus-visible:ring-2 focus-visible:ring-[#0A84FF]/20"
+                    />
+                  </div>
+
+                  {/* Client Secret */}
+                  <div>
+                    <label className="text-sm text-[#1D1D1F] mb-2 block">Client Secret</label>
+                    <input
+                      type="password"
+                      value={youtubeClientSecret}
+                      onChange={(e) => setYoutubeClientSecret(e.target.value)}
+                      placeholder="从 Google Cloud Console 获取"
+                      className="w-full h-10 px-3 rounded-lg bg-[#F5F5F7] border border-[#E5E5E7] text-sm text-[#1D1D1F] font-mono transition-colors focus:outline-none focus-visible:border-[#0A84FF] focus-visible:ring-2 focus-visible:ring-[#0A84FF]/20"
+                    />
+                  </div>
+
+                  <div className="bg-[#F5F5F7] rounded-lg p-4">
+                    <p className="text-xs text-[#6E6E73] leading-relaxed">
+                      <strong className="text-[#1D1D1F]">获取 OAuth 凭据:</strong>
+                      <br />
+                      1. 前往{' '}
+                      <a
+                        href="https://console.cloud.google.com/apis/credentials"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#0A84FF] hover:underline"
+                      >
+                        Google Cloud Console
+                      </a>
+                      <br />
+                      2. 创建 OAuth 2.0 客户端 ID（应用类型：桌面应用）
+                      <br />
+                      3. 将 Client ID 和 Client Secret 填入上方
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={handleSaveYoutubeCredentials}
+                      className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors"
+                    >
+                      保存凭据
+                    </button>
+                    <button
+                      onClick={handleYoutubeAuth}
+                      disabled={loadingYoutube || !youtubeClientId || !youtubeClientSecret}
+                      className="h-9 px-4 rounded-lg bg-[#FF0000] text-sm text-white font-medium hover:bg-[#CC0000] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loadingYoutube && <Loader2 className="h-4 w-4 animate-spin" />}
+                      连接 YouTube
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* YouTube Default Playlist Card */}
+            {youtubeAuthenticated && youtubeChannel && (
+              <div className="bg-white rounded-2xl border border-[#E5E5E7] shadow-sm p-6 mt-6">
+                <div className="mb-4">
+                  <h2 className="text-base font-semibold text-[#1D1D1F]">默认播放列表</h2>
+                  <p className="text-xs text-[#A1A1A6] mt-1">
+                    设置上传视频时的默认播放列表(可在上传时单独选择)
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <PlaylistSelector
+                    value={youtubeDefaultPlaylist}
+                    onChange={setYoutubeDefaultPlaylist}
+                    className="w-full"
+                  />
+
+                  <div className="bg-[#F5F5F7] rounded-lg p-4">
+                    <p className="text-xs text-[#6E6E73] leading-relaxed">
+                      <strong className="text-[#1D1D1F]">使用说明:</strong>
+                      <br />
+                      • 设置默认播放列表后,所有上传的视频将自动添加到该列表
+                      <br />
+                      • 上传时可以临时选择其他播放列表
+                      <br />• 选择"不添加到播放列表"则视频不会加入任何列表
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleSaveDefaultPlaylist}
+                      className="h-9 px-4 rounded-lg bg-[#0A84FF] text-sm text-white font-medium hover:bg-[#0060D5] transition-colors"
+                    >
+                      保存设置
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="space-y-4">
