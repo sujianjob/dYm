@@ -64,7 +64,8 @@ import {
   getTopTags,
   getContentLevelDistribution,
   getPostsWithoutDuration,
-  updatePostDuration
+  updatePostDuration,
+  fixAllPostTitles
 } from './database'
 import { fetchDouyinCookie, refreshDouyinCookieSilent, isCookieRefreshing } from './services/cookie'
 import {
@@ -945,6 +946,18 @@ app.whenReady().then(() => {
     })
 
     return { total, succeeded, failed }
+  })
+
+  // 批量修复所有视频标题
+  ipcMain.handle('files:fixAllTitles', async () => {
+    try {
+      console.log('[IPC] Starting fixAllTitles...')
+      const result = fixAllPostTitles()
+      return { success: true, result }
+    } catch (error) {
+      console.error('[IPC] fixAllTitles failed:', error)
+      return { success: false, error: (error as Error).message }
+    }
   })
 
   // Database IPC handlers

@@ -246,6 +246,11 @@ const filesAPI = {
     ipcRenderer.invoke('files:deleteUserFiles', userId, secUid),
   backfillDurations: (): Promise<{ total: number; succeeded: number; failed: number }> =>
     ipcRenderer.invoke('files:backfillDurations'),
+  fixAllTitles: (): Promise<{
+    success: boolean
+    result?: { fixed: number; skipped: number; failed: number }
+    error?: string
+  }> => ipcRenderer.invoke('files:fixAllTitles'),
   onBackfillProgress: (
     callback: (progress: BackfillProgress) => void
   ): (() => void) => {

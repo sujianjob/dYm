@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
+import { existsSync, readFileSync } from 'fs'
 
 const DEFAULT_ANALYSIS_PROMPT = `你是视频内容分析助手。分析视频帧截图，输出标准化JSON。
 
@@ -1377,6 +1378,77 @@ export function getYouTubeUploadStats(): { total: number; uploaded: number } {
     .get() as { total: number; uploaded: number }
   return row
 }
+
+// ========== 标题修复功能 ==========
+
+/**
+ * 从 _desc.txt 文件读取原始标题
+ * @param videoPath 视频目录路径
+ * @param awemeId 视频ID
+ * @returns 原始标题，如果文件不存在则返回 null
+ */
+function readDescFromFile(videoPath: string, awemeId: string): string | null {
+  try {
+    const descPath = join(videoPath, `${awemeId}_desc.txt`)
+    if (existsSync(descPath)) {
+      return readFileSync(descPath, 'utf-8').trim()
+    }
+  } catch (error) {
+    console.warn(`[DB] Failed to read desc file for ${awemeId}:`, error)
+  }
+  return null
+}
+
+/**
+ * 批量修复所有视频标题，从 _desc.txt 文件读取
+ * @returns { fixed: number, skipped: number, failed: number }
+ */
+export function fixAllPostTitles(): { fixed: number; skipped: number; failed: number } {
+  const database = getDatabase()
+  const posts = database.prepare('SELECT id, aweme_id, video_path, desc FROM posts').all() as DbPost[]
+
+  let fixed = 0
+  let skipped = 0
+  let failed = 0
+
+  const updateStmt = database.prepare('UPDATE posts SET caption = ?, desc = ? WHERE id = ?')
+
+  for (const post of posts) {
+    if (!post.video_path || !post.aweme_id) {
+      skipped++
+      continue
+    }
+
+    const originalDesc = readDescFromFile(post.video_path, post.aweme_id)
+    if (!originalDesc) {
+      failed++
+      continue
+    }
+
+    // 检查是否需要修复（已经是正确格式的跳过）
+    if (post.desc === originalDesc) {
+      skipped++
+      continue
+    }
+
+    try {
+      updateStmt.run(originalDesc, originalDesc, post.id)
+      fixed++
+      if (fixed % 100 === 0) {
+        console.log(`[DB] Fixed ${fixed} posts...`)
+      }
+    } catch (error) {
+      failed++
+      console.error(`[DB] Failed to update post ${post.id}:`, error)
+    }
+  }
+
+  console.log(`[DB] FixTitles complete: fixed=${fixed}, skipped=${skipped}, failed=${failed}`)
+  return { fixed, skipped, failed }
+}
+
+// 导出 readDescFromFile 供下载逻辑使用
+export { readDescFromFile }
 
 export function closeDatabase(): void {
   if (db) {

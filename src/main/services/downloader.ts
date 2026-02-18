@@ -9,6 +9,7 @@ import {
   getSetting,
   createPost,
   getPostByAwemeId,
+  readDescFromFile,
   type DbTaskWithUsers,
   type DbUser
 } from '../database'
@@ -390,14 +391,19 @@ async function downloadUserVideos(
               }
             }
 
-            // 入库
+            // 入库：优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+            const originalDesc =
+              readDescFromFile(join(userPath, folderName), awemeId) ||
+              awemeData.desc ||
+              awemeData.caption ||
+              ''
             createPost({
               aweme_id: awemeId,
               user_id: user.id,
               sec_uid: user.sec_uid,
               nickname: awemeData.nickname || user.nickname,
-              caption: awemeData.caption || '',
-              desc: awemeData.desc || '',
+              caption: originalDesc,
+              desc: originalDesc,
               aweme_type: awemeData.awemeType || 0,
               create_time: awemeData.createTime || '',
               folder_name: folderName,
@@ -701,13 +707,19 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       }
     }
 
+    // 优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+    const originalDesc =
+      readDescFromFile(join(userPath, folderName), awemeId) ||
+      videoDesc ||
+      videoCaption ||
+      ''
     const post = createPost({
       aweme_id: awemeId,
       user_id: user.id,
       sec_uid: secUid,
       nickname: videoNickname,
-      caption: videoCaption,
-      desc: videoDesc,
+      caption: originalDesc,
+      desc: originalDesc,
       aweme_type: videoAwemeType,
       create_time: videoCreateTime,
       folder_name: folderName,
@@ -720,7 +732,7 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
     sendSingleProgress({
       status: 'completed',
       progress: 100,
-      message: `下载成功: ${videoDesc?.slice(0, 30) || awemeId}`
+      message: `下载成功: ${originalDesc?.slice(0, 30) || awemeId}`
     })
 
     return { success: true, postId: post.id, userId: user.id }

@@ -94,6 +94,7 @@ export default function FilesPage() {
   const [isShortsBatch, setIsShortsBatch] = useState(false)
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
   const [validPostIds, setValidPostIds] = useState<number[]>([])
+  const [isFixing, setIsFixing] = useState(false)
 
   const totalSize = users.reduce((sum, u) => sum + u.fileSize, 0)
   const totalFiles = users.reduce((sum, u) => sum + u.folderCount, 0)
@@ -279,6 +280,40 @@ export default function FilesPage() {
     }
   }
 
+  const handleFixAllTitles = async () => {
+    if (
+      !confirm(
+        '确定要修复所有视频标题吗？\n\n这将从 _desc.txt 文件读取原始标题并更新数据库。'
+      )
+    ) {
+      return
+    }
+
+    setIsFixing(true)
+    try {
+      const result = await window.api.files.fixAllTitles()
+      if (result.success && result.result) {
+        toast.success(
+          `修复完成！\n\n` +
+            `✓ 成功: ${result.result.fixed} 个\n` +
+            `⊘ 跳过: ${result.result.skipped} 个\n` +
+            `✗ 失败: ${result.result.failed} 个`
+        )
+        // 刷新当前用户列表
+        if (selectedUser) {
+          await loadPosts(selectedUser, 1, true)
+        }
+      } else {
+        toast.error(`修复失败: ${result.error || '未知错误'}`)
+      }
+    } catch (error) {
+      console.error('[FilesPage] fixAllTitles error:', error)
+      toast.error(`修复失败: ${error}`)
+    } finally {
+      setIsFixing(false)
+    }
+  }
+
   const handleBatchUpload = async () => {
     if (selectedIds.size === 0) {
       toast.error('请先选择要上传的视频')
@@ -442,6 +477,24 @@ export default function FilesPage() {
               清空用户文件
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleFixAllTitles}
+            disabled={isFixing}
+            className="border-[#0A84FF] text-[#0A84FF] hover:bg-blue-50"
+          >
+            {isFixing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                修复中...
+              </>
+            ) : (
+              <>
+                🔧 修复所有标题
+              </>
+            )}
+          </Button>
         </div>
       </header>
 

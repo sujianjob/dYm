@@ -437,6 +437,11 @@ declare global {
     deletePost: (postId: number) => Promise<boolean>
     deleteUserFiles: (userId: number, secUid: string) => Promise<number>
     backfillDurations: () => Promise<{ total: number; succeeded: number; failed: number }>
+    fixAllTitles: () => Promise<{
+      success: boolean
+      result?: { fixed: number; skipped: number; failed: number }
+      error?: string
+    }>
     onBackfillProgress: (callback: (progress: BackfillProgress) => void) => () => void
   }
 

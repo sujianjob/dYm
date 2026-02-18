@@ -7,7 +7,8 @@ import {
   getSetting,
   createPost,
   getPostByAwemeId,
-  updateUserSyncStatus
+  updateUserSyncStatus,
+  readDescFromFile
 } from '../database'
 import { getVideoDuration } from './analyzer'
 
@@ -280,13 +281,19 @@ export async function startUserSync(userId: number): Promise<void> {
               }
             }
 
+            // 优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+            const originalDesc =
+              readDescFromFile(join(userPath, awemeId), awemeId) ||
+              awemeData.desc ||
+              awemeData.caption ||
+              ''
             createPost({
               aweme_id: awemeId,
               user_id: user.id,
               sec_uid: user.sec_uid,
               nickname: awemeData.nickname || user.nickname,
-              caption: awemeData.caption || '',
-              desc: awemeData.desc || '',
+              caption: originalDesc,
+              desc: originalDesc,
               aweme_type: awemeData.awemeType || 0,
               create_time: awemeData.createTime || '',
               folder_name: awemeId,
