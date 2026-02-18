@@ -66,7 +66,7 @@ const URLS = [
   'https://www.douyin.com/user/MS4wLjABAAAATtM5qVZhyYjvtbVHEd4qFXHpCvIWuACCd38klJWsKEph0q3QwYu6L8f7BrwIzbxP',
   'https://www.douyin.com/user/MS4wLjABAAAAyZRA-JJvvyHTvBr1vLEXYpZvjti1lgRMKuo6rTAjNnAbLvI6cNiif9kU7ptWcG1V',
   'https://www.douyin.com/user/MS4wLjABAAAAttCEtzfPgR1vHBJ7eArUY6ULPKPqqkVg7DRy0qnHyeE',
-  'https://www.douyin.com/user/MS4wLjABAAAAK2jW2BNuFA9rAPvT96GxFaTLAUb29mjfEwrlJ_9Ed7c',
+  'https://www.douyin.com/user/MS4wLjABAAAAK2jW2BNuFA9rAPvT96GxFaTLAUb29mjfEwrlJ_9Ed7c'
 ]
 
 // 输出文件路径
@@ -151,7 +151,8 @@ async function main() {
         uid: userData.uid || '',
         nickname: userData.nickname || '',
         signature: userData.signature || '',
-        avatar: userData.avatar_larger?.url_list?.[0] || userData.avatar_medium?.url_list?.[0] || '',
+        avatar:
+          userData.avatar_larger?.url_list?.[0] || userData.avatar_medium?.url_list?.[0] || '',
         short_id: userData.short_id || '',
         unique_id: userData.unique_id || '',
         following_count: userData.following_count || 0,
@@ -165,8 +166,7 @@ async function main() {
       success++
 
       // 延迟避免请求过快
-      await new Promise(resolve => setTimeout(resolve, 300))
-
+      await new Promise((resolve) => setTimeout(resolve, 300))
     } catch (error) {
       console.log(`  ❌ 失败: ${error.message}`)
       failed++

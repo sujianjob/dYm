@@ -35,7 +35,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon: Icon, color, bgColor }: StatCardProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex items-center" style={{ padding: '14px 18px', gap: 14 }}>
+    <div
+      className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex items-center"
+      style={{ padding: '14px 18px', gap: 14 }}
+    >
       <div
         className="rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: bgColor, width: 40, height: 40 }}
@@ -46,7 +49,9 @@ function StatCard({ label, value, icon: Icon, color, bgColor }: StatCardProps) {
         <p className="text-[26px] font-bold text-[#1D1D1F] tabular-nums leading-none tracking-tight">
           {value.toLocaleString()}
         </p>
-        <p className="text-[12px] text-[#86868B]" style={{ marginTop: 3 }}>{label}</p>
+        <p className="text-[12px] text-[#86868B]" style={{ marginTop: 3 }}>
+          {label}
+        </p>
       </div>
     </div>
   )
@@ -54,8 +59,13 @@ function StatCard({ label, value, icon: Icon, color, bgColor }: StatCardProps) {
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]" style={{ padding: '16px 20px' }}>
-      <h3 className="text-[13px] font-medium text-[#86868B]" style={{ marginBottom: 12 }}>{title}</h3>
+    <div
+      className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+      style={{ padding: '16px 20px' }}
+    >
+      <h3 className="text-[13px] font-medium text-[#86868B]" style={{ marginBottom: 12 }}>
+        {title}
+      </h3>
       {children}
     </div>
   )
@@ -115,7 +125,10 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 overflow-y-auto bg-[#F5F5F7]">
       {/* Header */}
-      <div className="flex items-center justify-between bg-white border-b border-[#E5E5E7]" style={{ height: 56, padding: '0 28px' }}>
+      <div
+        className="flex items-center justify-between bg-white border-b border-[#E5E5E7]"
+        style={{ height: 56, padding: '0 28px' }}
+      >
         <h1 className="text-[16px] font-semibold text-[#1D1D1F]">数据概览</h1>
         <div className="flex items-center" style={{ gap: 8 }}>
           <Button
@@ -143,10 +156,34 @@ export default function DashboardPage() {
       <div className="flex flex-col" style={{ padding: '20px 28px 28px', gap: 16 }}>
         {/* Stat Cards */}
         <div className="grid grid-cols-4" style={{ gap: 14 }}>
-          <StatCard label="关注用户" value={overview?.totalUsers ?? 0} icon={Users} color="#0A84FF" bgColor="#E8F0FE" />
-          <StatCard label="视频总数" value={overview?.totalPosts ?? 0} icon={Video} color="#30D158" bgColor="#E3F9E8" />
-          <StatCard label="已分析" value={overview?.analyzedPosts ?? 0} icon={Sparkles} color="#FF9F0A" bgColor="#FFF3E0" />
-          <StatCard label="今日下载" value={overview?.todayDownloads ?? 0} icon={Download} color="#BF5AF2" bgColor="#F3E8FF" />
+          <StatCard
+            label="关注用户"
+            value={overview?.totalUsers ?? 0}
+            icon={Users}
+            color="#0A84FF"
+            bgColor="#E8F0FE"
+          />
+          <StatCard
+            label="视频总数"
+            value={overview?.totalPosts ?? 0}
+            icon={Video}
+            color="#30D158"
+            bgColor="#E3F9E8"
+          />
+          <StatCard
+            label="已分析"
+            value={overview?.analyzedPosts ?? 0}
+            icon={Sparkles}
+            color="#FF9F0A"
+            bgColor="#FFF3E0"
+          />
+          <StatCard
+            label="今日下载"
+            value={overview?.todayDownloads ?? 0}
+            icon={Download}
+            color="#BF5AF2"
+            bgColor="#F3E8FF"
+          />
         </div>
 
         {/* Row 1: Trend + User Distribution */}
@@ -162,10 +199,32 @@ export default function DashboardPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#A1A1A6' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#A1A1A6' }} axisLine={false} tickLine={false} allowDecimals={false} width={36} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value ?? 0, '下载数']} />
-                  <Area type="monotone" dataKey="count" stroke={CHART_BLUE} strokeWidth={2} fill="url(#trendFill)" dot={false} activeDot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: CHART_BLUE }} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10, fill: '#A1A1A6' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#A1A1A6' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    width={36}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) => [value ?? 0, '下载数']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke={CHART_BLUE}
+                    strokeWidth={2}
+                    fill="url(#trendFill)"
+                    dot={false}
+                    activeDot={{ r: 4, strokeWidth: 2, fill: '#fff', stroke: CHART_BLUE }}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -178,9 +237,25 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={userDist} layout="vertical" margin={{ left: 0, right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#A1A1A6' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <YAxis type="category" dataKey="nickname" tick={{ fontSize: 11, fill: '#6E6E73' }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value ?? 0, '视频数']} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 10, fill: '#A1A1A6' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nickname"
+                    tick={{ fontSize: 11, fill: '#6E6E73' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) => [value ?? 0, '视频数']}
+                  />
                   <Bar dataKey="count" fill={CHART_BLUE} radius={[0, 5, 5, 0]} barSize={14} />
                 </BarChart>
               </ResponsiveContainer>
@@ -197,9 +272,27 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={topTags} margin={{ bottom: 4, right: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" vertical={false} />
-                  <XAxis dataKey="tag" tick={{ fontSize: 9, fill: '#6E6E73' }} axisLine={false} tickLine={false} interval={0} angle={-35} textAnchor="end" height={52} />
-                  <YAxis tick={{ fontSize: 10, fill: '#A1A1A6' }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value ?? 0, '出现次数']} />
+                  <XAxis
+                    dataKey="tag"
+                    tick={{ fontSize: 9, fill: '#6E6E73' }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    angle={-35}
+                    textAnchor="end"
+                    height={52}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#A1A1A6' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    width={32}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) => [value ?? 0, '出现次数']}
+                  />
                   <Bar dataKey="count" fill="#30D158" radius={[4, 4, 0, 0]} barSize={18} />
                 </BarChart>
               </ResponsiveContainer>
@@ -213,9 +306,24 @@ export default function DashboardPage() {
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <BarChart data={levelDist} margin={{ bottom: 0, right: 4 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F2" vertical={false} />
-                  <XAxis dataKey="level" tick={{ fontSize: 11, fill: '#6E6E73' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: '#A1A1A6' }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value ?? 0, '视频数']} labelFormatter={(l) => `等级 ${l}`} />
+                  <XAxis
+                    dataKey="level"
+                    tick={{ fontSize: 11, fill: '#6E6E73' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#A1A1A6' }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                    width={32}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value) => [value ?? 0, '视频数']}
+                    labelFormatter={(l) => `等级 ${l}`}
+                  />
                   <Bar dataKey="count" fill="#FF9F0A" radius={[4, 4, 0, 0]} barSize={28} />
                 </BarChart>
               </ResponsiveContainer>

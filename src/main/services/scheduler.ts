@@ -1,6 +1,12 @@
 import cron, { type ScheduledTask as CronScheduledTask } from 'node-cron'
 import { BrowserWindow } from 'electron'
-import { getAutoSyncUsers, getAutoSyncTasks, updateTaskLastSyncAt, type DbUser, type DbTaskWithUsers } from '../database'
+import {
+  getAutoSyncUsers,
+  getAutoSyncTasks,
+  updateTaskLastSyncAt,
+  type DbUser,
+  type DbTaskWithUsers
+} from '../database'
 import { startUserSync, isUserSyncing } from './syncer'
 import { startDownloadTask, isTaskRunning } from './downloader'
 
@@ -69,16 +75,36 @@ function isValidCron(expression: string): boolean {
 
 async function executeUserSync(user: DbUser): Promise<void> {
   if (isUserSyncing(user.id)) {
-    sendSchedulerLog({ level: 'warn', message: '用户正在同步中，跳过', type: 'user', targetName: user.nickname })
+    sendSchedulerLog({
+      level: 'warn',
+      message: '用户正在同步中，跳过',
+      type: 'user',
+      targetName: user.nickname
+    })
     return
   }
 
-  sendSchedulerLog({ level: 'info', message: '开始定时同步', type: 'user', targetName: user.nickname })
+  sendSchedulerLog({
+    level: 'info',
+    message: '开始定时同步',
+    type: 'user',
+    targetName: user.nickname
+  })
   try {
     await startUserSync(user.id)
-    sendSchedulerLog({ level: 'info', message: '定时同步完成', type: 'user', targetName: user.nickname })
+    sendSchedulerLog({
+      level: 'info',
+      message: '定时同步完成',
+      type: 'user',
+      targetName: user.nickname
+    })
   } catch (error) {
-    sendSchedulerLog({ level: 'error', message: `同步失败: ${(error as Error).message}`, type: 'user', targetName: user.nickname })
+    sendSchedulerLog({
+      level: 'error',
+      message: `同步失败: ${(error as Error).message}`,
+      type: 'user',
+      targetName: user.nickname
+    })
   }
 }
 
@@ -92,7 +118,12 @@ export function scheduleUser(user: DbUser): void {
   }
 
   if (!isValidCron(user.sync_cron)) {
-    sendSchedulerLog({ level: 'error', message: `无效的 Cron 表达式: ${user.sync_cron}`, type: 'user', targetName: user.nickname })
+    sendSchedulerLog({
+      level: 'error',
+      message: `无效的 Cron 表达式: ${user.sync_cron}`,
+      type: 'user',
+      targetName: user.nickname
+    })
     return
   }
 
@@ -101,7 +132,12 @@ export function scheduleUser(user: DbUser): void {
   })
 
   scheduledUserTasks.set(user.id, { userId: user.id, task })
-  sendSchedulerLog({ level: 'info', message: `已注册定时同步 (${user.sync_cron})`, type: 'user', targetName: user.nickname })
+  sendSchedulerLog({
+    level: 'info',
+    message: `已注册定时同步 (${user.sync_cron})`,
+    type: 'user',
+    targetName: user.nickname
+  })
 }
 
 export function unscheduleUser(userId: number): void {
@@ -116,7 +152,12 @@ export function unscheduleUser(userId: number): void {
 // Task scheduling functions
 async function executeTaskDownload(task: DbTaskWithUsers): Promise<void> {
   if (isTaskRunning(task.id)) {
-    sendSchedulerLog({ level: 'warn', message: '任务正在运行中，跳过', type: 'task', targetName: task.name })
+    sendSchedulerLog({
+      level: 'warn',
+      message: '任务正在运行中，跳过',
+      type: 'task',
+      targetName: task.name
+    })
     return
   }
 
@@ -124,9 +165,19 @@ async function executeTaskDownload(task: DbTaskWithUsers): Promise<void> {
   try {
     await startDownloadTask(task.id)
     updateTaskLastSyncAt(task.id)
-    sendSchedulerLog({ level: 'info', message: '定时下载完成', type: 'task', targetName: task.name })
+    sendSchedulerLog({
+      level: 'info',
+      message: '定时下载完成',
+      type: 'task',
+      targetName: task.name
+    })
   } catch (error) {
-    sendSchedulerLog({ level: 'error', message: `执行失败: ${(error as Error).message}`, type: 'task', targetName: task.name })
+    sendSchedulerLog({
+      level: 'error',
+      message: `执行失败: ${(error as Error).message}`,
+      type: 'task',
+      targetName: task.name
+    })
   }
 }
 
@@ -140,7 +191,12 @@ export function scheduleTask(task: DbTaskWithUsers): void {
   }
 
   if (!isValidCron(task.sync_cron)) {
-    sendSchedulerLog({ level: 'error', message: `无效的 Cron 表达式: ${task.sync_cron}`, type: 'task', targetName: task.name })
+    sendSchedulerLog({
+      level: 'error',
+      message: `无效的 Cron 表达式: ${task.sync_cron}`,
+      type: 'task',
+      targetName: task.name
+    })
     return
   }
 
@@ -149,7 +205,12 @@ export function scheduleTask(task: DbTaskWithUsers): void {
   })
 
   scheduledDownloadTasks.set(task.id, { taskId: task.id, task: cronTask })
-  sendSchedulerLog({ level: 'info', message: `已注册定时下载 (${task.sync_cron})`, type: 'task', targetName: task.name })
+  sendSchedulerLog({
+    level: 'info',
+    message: `已注册定时下载 (${task.sync_cron})`,
+    type: 'task',
+    targetName: task.name
+  })
 }
 
 export function unscheduleTask(taskId: number): void {
@@ -164,14 +225,22 @@ export function unscheduleTask(taskId: number): void {
 export function initScheduler(): void {
   // Initialize user-level scheduling
   const users = getAutoSyncUsers()
-  sendSchedulerLog({ level: 'info', message: `初始化完成，${users.length} 个用户自动同步`, type: 'system' })
+  sendSchedulerLog({
+    level: 'info',
+    message: `初始化完成，${users.length} 个用户自动同步`,
+    type: 'system'
+  })
   for (const user of users) {
     scheduleUser(user)
   }
 
   // Initialize task-level scheduling
   const tasks = getAutoSyncTasks()
-  sendSchedulerLog({ level: 'info', message: `初始化完成，${tasks.length} 个任务自动同步`, type: 'system' })
+  sendSchedulerLog({
+    level: 'info',
+    message: `初始化完成，${tasks.length} 个任务自动同步`,
+    type: 'system'
+  })
   for (const task of tasks) {
     scheduleTask(task)
   }

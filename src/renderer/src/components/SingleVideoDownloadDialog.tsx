@@ -151,9 +151,7 @@ export function SingleVideoDownloadDialog({
             <Link className="h-5 w-5 text-[#0A84FF]" />
             下载单个视频
           </DialogTitle>
-          <DialogDescription>
-            输入抖音视频链接，下载并存入数据库管理
-          </DialogDescription>
+          <DialogDescription>输入抖音视频链接，下载并存入数据库管理</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -177,9 +175,7 @@ export function SingleVideoDownloadDialog({
             <div className="space-y-3 p-4 rounded-lg bg-[#F5F5F7]">
               <div className="flex items-center gap-3">
                 {getStatusIcon()}
-                <span className="text-sm font-medium text-[#1D1D1F]">
-                  {progress.message}
-                </span>
+                <span className="text-sm font-medium text-[#1D1D1F]">{progress.message}</span>
               </div>
 
               {progress.status !== 'completed' && progress.status !== 'failed' && (

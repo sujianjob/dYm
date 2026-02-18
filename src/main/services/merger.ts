@@ -98,8 +98,11 @@ function getVideoMetadata(videoPath: string): Promise<VideoMetadata> {
       }
 
       // 获取详细编码参数
-      const videoBitrate = videoStream.bit_rate ? parseInt(String(videoStream.bit_rate)) :
-                          (metadata.format.bit_rate ? parseInt(String(metadata.format.bit_rate)) * 0.9 : 2000000)
+      const videoBitrate = videoStream.bit_rate
+        ? parseInt(String(videoStream.bit_rate))
+        : metadata.format.bit_rate
+          ? parseInt(String(metadata.format.bit_rate)) * 0.9
+          : 2000000
       const profile = String(videoStream.profile || 'High')
       const levelNum = videoStream.level ? Number(videoStream.level) : 31
       const level = String(levelNum / 10)
@@ -112,7 +115,9 @@ function getVideoMetadata(videoPath: string): Promise<VideoMetadata> {
         duration: metadata.format.duration || 0,
         videoCodec: videoStream.codec_name || 'h264',
         hasAudio: !!audioStream,
-        audioSampleRate: audioStream?.sample_rate ? parseInt(String(audioStream.sample_rate)) : 44100,
+        audioSampleRate: audioStream?.sample_rate
+          ? parseInt(String(audioStream.sample_rate))
+          : 44100,
         // 详细参数
         videoBitrate,
         profile,
@@ -159,23 +164,24 @@ function createCoverVideo(
 
     // 输出选项 - 使用简化的编码参数
     const outputOpts = [
-      '-t', String(duration),
-      '-vf', vf,
-      '-c:v', 'libx264',
-      '-preset', 'fast',
-      '-crf', '18',
-      '-r', String(metadata.fps),
-      '-pix_fmt', 'yuv420p'
+      '-t',
+      String(duration),
+      '-vf',
+      vf,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'fast',
+      '-crf',
+      '18',
+      '-r',
+      String(metadata.fps),
+      '-pix_fmt',
+      'yuv420p'
     ]
 
     if (metadata.hasAudio) {
-      outputOpts.push(
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        '-ar', '44100',
-        '-ac', '2',
-        '-shortest'
-      )
+      outputOpts.push('-c:a', 'aac', '-b:a', '128k', '-ar', '44100', '-ac', '2', '-shortest')
     } else {
       outputOpts.push('-an')
     }
@@ -237,28 +243,41 @@ function concatVideosWithAudio(
     const command = ffmpeg()
       .input(coverVideoPath)
       .input(originalVideoPath)
-      .complexFilter([
-        // 先统一视频格式，确保可以拼接
-        '[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v0]',
-        '[1:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v1]',
-        '[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]'
-      ], ['outv', 'outa'])
+      .complexFilter(
+        [
+          // 先统一视频格式，确保可以拼接
+          '[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v0]',
+          '[1:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v1]',
+          '[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]'
+        ],
+        ['outv', 'outa']
+      )
       .outputOptions([
-        '-c:v', 'libx264',
-        '-b:v', bitrateStr,
-        '-maxrate', bitrateStr,
-        '-bufsize', `${Math.round(videoBitrate / 500)}k`,
-        '-c:a', 'aac',
-        '-b:a', '128k',
-        '-preset', 'fast',
-        '-pix_fmt', 'yuv420p',
-        '-movflags', '+faststart',
+        '-c:v',
+        'libx264',
+        '-b:v',
+        bitrateStr,
+        '-maxrate',
+        bitrateStr,
+        '-bufsize',
+        `${Math.round(videoBitrate / 500)}k`,
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-preset',
+        'fast',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
         '-y'
       ])
       .output(outputPath)
       .on('progress', (progress) => {
         const currentTime = progress.timemark ? parseTimemark(progress.timemark) : 0
-        const percent = totalDuration > 0 ? Math.min(99, Math.round((currentTime / totalDuration) * 100)) : 0
+        const percent =
+          totalDuration > 0 ? Math.min(99, Math.round((currentTime / totalDuration) * 100)) : 0
         sendProgress({
           status: 'merging',
           progress: 50 + percent * 0.5,
@@ -300,26 +319,37 @@ function concatVideosNoAudio(
     const command = ffmpeg()
       .input(coverVideoPath)
       .input(originalVideoPath)
-      .complexFilter([
-        '[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v0]',
-        '[1:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v1]',
-        '[v0][v1]concat=n=2:v=1:a=0[outv]'
-      ], ['outv'])
+      .complexFilter(
+        [
+          '[0:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v0]',
+          '[1:v]scale=trunc(iw/2)*2:trunc(ih/2)*2,setsar=1,fps=30[v1]',
+          '[v0][v1]concat=n=2:v=1:a=0[outv]'
+        ],
+        ['outv']
+      )
       .outputOptions([
-        '-c:v', 'libx264',
-        '-b:v', bitrateStr,
-        '-maxrate', bitrateStr,
-        '-bufsize', `${Math.round(videoBitrate / 500)}k`,
-        '-preset', 'fast',
-        '-pix_fmt', 'yuv420p',
-        '-movflags', '+faststart',
+        '-c:v',
+        'libx264',
+        '-b:v',
+        bitrateStr,
+        '-maxrate',
+        bitrateStr,
+        '-bufsize',
+        `${Math.round(videoBitrate / 500)}k`,
+        '-preset',
+        'fast',
+        '-pix_fmt',
+        'yuv420p',
+        '-movflags',
+        '+faststart',
         '-an',
         '-y'
       ])
       .output(outputPath)
       .on('progress', (progress) => {
         const currentTime = progress.timemark ? parseTimemark(progress.timemark) : 0
-        const percent = totalDuration > 0 ? Math.min(99, Math.round((currentTime / totalDuration) * 100)) : 0
+        const percent =
+          totalDuration > 0 ? Math.min(99, Math.round((currentTime / totalDuration) * 100)) : 0
         sendProgress({
           status: 'merging',
           progress: 50 + percent * 0.5,
@@ -369,11 +399,19 @@ function createFirstFrameVideo(
         createCoverVideo(tempFramePath, outputPath, metadata, duration)
           .then(() => {
             // 清理临时首帧图片
-            try { unlinkSync(tempFramePath) } catch { /* ignore */ }
+            try {
+              unlinkSync(tempFramePath)
+            } catch {
+              /* ignore */
+            }
             resolve()
           })
           .catch((err) => {
-            try { unlinkSync(tempFramePath) } catch { /* ignore */ }
+            try {
+              unlinkSync(tempFramePath)
+            } catch {
+              /* ignore */
+            }
             reject(err)
           })
       })
@@ -569,9 +607,21 @@ export async function mergeVideoWithCover(
   try {
     // 使用 concat filter 方式（更稳定可靠），传入原视频码率
     if (metadata.hasAudio) {
-      await concatVideosWithAudio(tempCoverVideo, videoPath, outputPath, totalDuration, metadata.videoBitrate)
+      await concatVideosWithAudio(
+        tempCoverVideo,
+        videoPath,
+        outputPath,
+        totalDuration,
+        metadata.videoBitrate
+      )
     } else {
-      await concatVideosNoAudio(tempCoverVideo, videoPath, outputPath, totalDuration, metadata.videoBitrate)
+      await concatVideosNoAudio(
+        tempCoverVideo,
+        videoPath,
+        outputPath,
+        totalDuration,
+        metadata.videoBitrate
+      )
     }
   } catch (error) {
     // Clean up temporary file
@@ -606,10 +656,7 @@ export async function mergeVideoWithCover(
  * Extend first frame of video to 1.5 seconds
  * 拉长视频首帧到 1.5 秒
  */
-export async function extendFirstFrame(
-  secUid: string,
-  folderName: string
-): Promise<MergeResult> {
+export async function extendFirstFrame(secUid: string, folderName: string): Promise<MergeResult> {
   // Reset cancellation state
   isCancelled = false
   tempFilePath = null
@@ -736,9 +783,21 @@ export async function extendFirstFrame(
   try {
     // 使用 concat filter 方式（更稳定可靠），传入原视频码率
     if (metadata.hasAudio) {
-      await concatVideosWithAudio(tempFirstFrameVideo, videoPath, outputPath, totalDuration, metadata.videoBitrate)
+      await concatVideosWithAudio(
+        tempFirstFrameVideo,
+        videoPath,
+        outputPath,
+        totalDuration,
+        metadata.videoBitrate
+      )
     } else {
-      await concatVideosNoAudio(tempFirstFrameVideo, videoPath, outputPath, totalDuration, metadata.videoBitrate)
+      await concatVideosNoAudio(
+        tempFirstFrameVideo,
+        videoPath,
+        outputPath,
+        totalDuration,
+        metadata.videoBitrate
+      )
     }
   } catch (error) {
     await rm(tempFirstFrameVideo, { force: true }).catch(() => {})

@@ -1,13 +1,16 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { DouyinHandler, DouyinDownloader } from 'dy-downloader'
 import {
   getUserById,
   getSetting,
   createPost,
   getPostByAwemeId,
-  updateUserSyncStatus
+  updateUserSyncStatus,
+  readDescFromFile
 } from '../database'
+import { getVideoDuration } from './analyzer'
 
 export interface SyncProgress {
   userId: number
@@ -25,6 +28,30 @@ interface SyncState {
 }
 
 const runningSyncs: Map<number, SyncState> = new Map()
+
+// ffmpeg 并发限制
+const MAX_FFMPEG_CONCURRENCY = 2
+let ffmpegRunning = 0
+const ffmpegQueue: Array<() => void> = []
+
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegRunning < MAX_FFMPEG_CONCURRENCY) {
+    ffmpegRunning++
+    return
+  }
+  return new Promise((resolve) => {
+    ffmpegQueue.push(() => {
+      ffmpegRunning++
+      resolve()
+    })
+  })
+}
+
+function releaseFfmpegSlot(): void {
+  ffmpegRunning--
+  const next = ffmpegQueue.shift()
+  if (next) next()
+}
 
 function sendProgress(progress: SyncProgress): void {
   const windows = BrowserWindow.getAllWindows()
@@ -72,7 +99,8 @@ export async function startUserSync(userId: number): Promise<void> {
   const downloadPath = getDownloadPath()
   const userPath = join(downloadPath, user.sec_uid)
 
-  const maxDownloadCount = user.max_download_count > 0 ? user.max_download_count : globalMaxDownloadCount
+  const maxDownloadCount =
+    user.max_download_count > 0 ? user.max_download_count : globalMaxDownloadCount
 
   let downloadedCount = 0
   let skippedCount = 0
@@ -175,7 +203,9 @@ export async function startUserSync(userId: number): Promise<void> {
       return
     }
 
-    console.log(`[Syncer] Fetch complete. Videos to download: ${videosToDownload.length}, skipped: ${skippedCount}`)
+    console.log(
+      `[Syncer] Fetch complete. Videos to download: ${videosToDownload.length}, skipped: ${skippedCount}`
+    )
 
     if (videosToDownload.length === 0) {
       console.log(`[Syncer] No new videos to download for ${user.nickname}`)
@@ -234,19 +264,43 @@ export async function startUserSync(userId: number): Promise<void> {
           try {
             await downloader.createDownloadTasks(awemeData, userPath)
 
+            // 提取视频时长
+            let duration: number | null = null
+            if ((awemeData.awemeType || 0) !== 68) {
+              const videoPath = join(userPath, awemeId, `${awemeId}_video.mp4`)
+              if (existsSync(videoPath)) {
+                await acquireFfmpegSlot()
+                try {
+                  duration = await getVideoDuration(videoPath)
+                  console.log(`[Syncer] Duration: ${duration}s for ${awemeId}`)
+                } catch (err) {
+                  console.warn(`[Syncer] Failed to get duration:`, err)
+                } finally {
+                  releaseFfmpegSlot()
+                }
+              }
+            }
+
+            // 优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+            const originalDesc =
+              readDescFromFile(join(userPath, awemeId), awemeId) ||
+              awemeData.desc ||
+              awemeData.caption ||
+              ''
             createPost({
               aweme_id: awemeId,
               user_id: user.id,
               sec_uid: user.sec_uid,
               nickname: awemeData.nickname || user.nickname,
-              caption: awemeData.caption || '',
-              desc: awemeData.desc || '',
+              caption: originalDesc,
+              desc: originalDesc,
               aweme_type: awemeData.awemeType || 0,
               create_time: awemeData.createTime || '',
               folder_name: awemeId,
               video_path: join(userPath, awemeId),
               cover_path: join(userPath, awemeId),
-              music_path: join(userPath, awemeId)
+              music_path: join(userPath, awemeId),
+              video_duration: duration
             })
 
             return true

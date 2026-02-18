@@ -221,6 +221,12 @@ declare global {
     analysis_scene: string | null
     analysis_content_level: number | null
     analyzed_at: number | null
+    // YouTube 上传
+    youtube_uploaded: number
+    youtube_video_id: string | null
+    youtube_uploaded_at: number | null
+    youtube_playlist_id: string | null
+    video_duration: number | null
   }
 
   interface MediaFiles {
@@ -236,19 +242,34 @@ declare global {
     nickname: string
   }
 
+  // 排序配置
+  interface SortConfig {
+    field: 'create_time' | 'downloaded_at' | 'analyzed_at' | 'analysis_content_level'
+    order: 'ASC' | 'DESC'
+  }
+
   interface PostFilters {
     secUid?: string
     tags?: string[]
     minContentLevel?: number
     maxContentLevel?: number
     analyzedOnly?: boolean
+    sort?: SortConfig
   }
 
   interface PostAPI {
-    getAll: (page?: number, pageSize?: number, filters?: PostFilters) => Promise<{ posts: DbPost[]; total: number; authors: PostAuthor[] }>
+    getAll: (
+      page?: number,
+      pageSize?: number,
+      filters?: PostFilters
+    ) => Promise<{ posts: DbPost[]; total: number; authors: PostAuthor[] }>
     getAllTags: () => Promise<string[]>
     getCoverPath: (secUid: string, folderName: string) => Promise<string | null>
-    getMediaFiles: (secUid: string, folderName: string, awemeType: number) => Promise<MediaFiles | null>
+    getMediaFiles: (
+      secUid: string,
+      folderName: string,
+      awemeType: number
+    ) => Promise<MediaFiles | null>
     openFolder: (secUid: string, folderName: string) => Promise<void>
   }
 
@@ -395,12 +416,33 @@ declare global {
     onDouyinLink: (callback: (link: string) => void) => () => void
   }
 
+  interface BackfillProgress {
+    status: 'running' | 'completed'
+    total: number
+    processed: number
+    succeeded: number
+    failed: number
+    message: string
+  }
+
   interface FilesAPI {
-    getUserPosts: (userId: number, page?: number, pageSize?: number) => Promise<{ posts: DbPost[]; total: number }>
+    getUserPosts: (
+      userId: number,
+      page?: number,
+      pageSize?: number,
+      sort?: SortConfig
+    ) => Promise<{ posts: DbPost[]; total: number }>
     getFileSizes: (secUid: string) => Promise<{ totalSize: number; folderCount: number }>
     getPostSize: (secUid: string, folderName: string) => Promise<number>
     deletePost: (postId: number) => Promise<boolean>
     deleteUserFiles: (userId: number, secUid: string) => Promise<number>
+    backfillDurations: () => Promise<{ total: number; succeeded: number; failed: number }>
+    fixAllTitles: () => Promise<{
+      success: boolean
+      result?: { fixed: number; skipped: number; failed: number }
+      error?: string
+    }>
+    onBackfillProgress: (callback: (progress: BackfillProgress) => void) => () => void
   }
 
   interface DashboardOverview {
@@ -438,6 +480,63 @@ declare global {
     getContentLevelDistribution: () => Promise<LevelDistItem[]>
   }
 
+  // YouTube 相关类型
+  interface YouTubeUploadProgress {
+    status: 'preparing' | 'uploading' | 'processing' | 'completed' | 'failed' | 'cancelled'
+    currentPost: string | null
+    currentIndex: number
+    totalPosts: number
+    uploadedCount: number
+    failedCount: number
+    progress: number
+    message: string
+  }
+
+  interface YouTubeUploadResult {
+    success: boolean
+    videoId?: string
+    videoUrl?: string
+    error?: string
+  }
+
+  interface YouTubeUploadRequest {
+    postId: number
+    title?: string
+    description?: string
+    tags?: string[]
+    privacy?: 'public' | 'unlisted' | 'private'
+    category?: string
+    playlistId?: string
+    isShorts?: boolean // 新增：是否为 Shorts
+  }
+
+  interface YouTubePlaylistInfo {
+    id: string
+    title: string
+    description: string
+    itemCount: number
+  }
+
+  interface YouTubeChannelInfo {
+    id: string
+    title: string
+    thumbnailUrl: string
+    playlists: YouTubePlaylistInfo[]
+  }
+
+  interface YouTubeAPI {
+    startAuth: () => Promise<{ success: boolean; error?: string }>
+    logout: () => Promise<void>
+    isAuthenticated: () => Promise<boolean>
+    getChannelInfo: () => Promise<YouTubeChannelInfo | null>
+    listPlaylists: () => Promise<YouTubePlaylistInfo[] | null>
+    uploadVideo: (request: YouTubeUploadRequest) => Promise<YouTubeUploadResult>
+    uploadBatch: (postIds: number[], playlistId?: string, isShorts?: boolean) => Promise<void>
+    cancelUpload: () => Promise<void>
+    isUploading: () => Promise<boolean>
+    onProgress: (callback: (progress: YouTubeUploadProgress) => void) => () => void
+  }
+
   interface API {
     db: DatabaseAPI
     settings: SettingsAPI
@@ -458,6 +557,7 @@ declare global {
     clipboard: ClipboardAPI
     files: FilesAPI
     dashboard: DashboardAPI
+    youtube: YouTubeAPI
   }
 
   interface Window {

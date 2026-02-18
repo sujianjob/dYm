@@ -119,11 +119,14 @@ async function extractSingleFrame(
   return new Promise((resolve, reject) => {
     ffmpeg(videoPath)
       .inputOptions([
-        '-ss', timestamp.toFixed(2) // 在输入前 seek，利用关键帧快速定位
+        '-ss',
+        timestamp.toFixed(2) // 在输入前 seek，利用关键帧快速定位
       ])
       .outputOptions([
-        '-frames:v', '1', // 只提取一帧
-        '-q:v', '2', // 最高质量
+        '-frames:v',
+        '1', // 只提取一帧
+        '-q:v',
+        '2', // 最高质量
         '-y'
       ])
       .output(outputPath)
@@ -414,7 +417,8 @@ export async function startAnalysis(secUid?: string): Promise<void> {
         throw new Error('已停止')
       }
 
-      const postTitle = (post.desc || post.caption || '').substring(0, 30) || `${post.nickname || '未知用户'}的视频`
+      const postTitle =
+        (post.desc || post.caption || '').substring(0, 30) || `${post.nickname || '未知用户'}的视频`
 
       sendProgress({
         status: 'running',
@@ -442,7 +446,9 @@ export async function startAnalysis(secUid?: string): Promise<void> {
       if ((analyzedCount + failedCount) % 5 === 0) {
         sendProgress({
           status: 'running',
-          currentPost: (posts[index].desc || posts[index].caption || '').substring(0, 30) || `${posts[index].nickname || '未知用户'}的视频`,
+          currentPost:
+            (posts[index].desc || posts[index].caption || '').substring(0, 30) ||
+            `${posts[index].nickname || '未知用户'}的视频`,
           currentIndex: index + 1,
           totalPosts: totalCount,
           analyzedCount,
@@ -487,3 +493,5 @@ export function stopAnalysis(): void {
 export function isAnalysisRunning(): boolean {
   return isAnalyzing
 }
+
+export { getVideoDuration }

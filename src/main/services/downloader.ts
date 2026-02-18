@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { DouyinHandler } from 'dy-downloader'
 import { DouyinDownloader } from 'dy-downloader'
 import {
@@ -8,9 +9,11 @@ import {
   getSetting,
   createPost,
   getPostByAwemeId,
+  readDescFromFile,
   type DbTaskWithUsers,
   type DbUser
 } from '../database'
+import { getVideoDuration } from './analyzer'
 
 // 并发控制函数
 async function runWithConcurrency<T>(
@@ -36,6 +39,30 @@ async function runWithConcurrency<T>(
   return results
 }
 
+// ffmpeg 并发限制
+const MAX_FFMPEG_CONCURRENCY = 2
+let ffmpegRunning = 0
+const ffmpegQueue: Array<() => void> = []
+
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegRunning < MAX_FFMPEG_CONCURRENCY) {
+    ffmpegRunning++
+    return
+  }
+  return new Promise((resolve) => {
+    ffmpegQueue.push(() => {
+      ffmpegRunning++
+      resolve()
+    })
+  })
+}
+
+function releaseFfmpegSlot(): void {
+  ffmpegRunning--
+  const next = ffmpegQueue.shift()
+  if (next) next()
+}
+
 export interface DownloadProgress {
   taskId: number
   status: 'running' | 'completed' | 'failed'
@@ -48,7 +75,7 @@ export interface DownloadProgress {
   downloadedPosts: number
 }
 
-let runningTasks: Map<number, { abort: boolean }> = new Map()
+const runningTasks: Map<number, { abort: boolean }> = new Map()
 
 function sendProgress(progress: DownloadProgress): void {
   const windows = BrowserWindow.getAllWindows()
@@ -113,14 +140,23 @@ export async function startDownloadTask(taskId: number): Promise<void> {
     })
 
     // 使用并发控制下载用户视频
-    const userTasks = task.users.map(
-      (user, index) => () => {
-        // 优先使用用户级别的下载限制，如果为0则使用全局设置
-        const userMaxCount = (user as DbUser & { max_download_count?: number }).max_download_count
-        const maxDownloadCount = userMaxCount && userMaxCount > 0 ? userMaxCount : globalMaxDownloadCount
-        return downloadUserVideos(taskId, task, user, index, downloadPath, cookie, maxDownloadCount, historicalDownloads, videoDownloadConcurrency)
-      }
-    )
+    const userTasks = task.users.map((user, index) => () => {
+      // 优先使用用户级别的下载限制，如果为0则使用全局设置
+      const userMaxCount = (user as DbUser & { max_download_count?: number }).max_download_count
+      const maxDownloadCount =
+        userMaxCount && userMaxCount > 0 ? userMaxCount : globalMaxDownloadCount
+      return downloadUserVideos(
+        taskId,
+        task,
+        user,
+        index,
+        downloadPath,
+        cookie,
+        maxDownloadCount,
+        historicalDownloads,
+        videoDownloadConcurrency
+      )
+    })
 
     const results = await runWithConcurrency(userTasks, concurrency)
     totalDownloaded = results.reduce((sum, count) => sum + count, 0)
@@ -338,20 +374,43 @@ async function downloadUserVideos(
           try {
             await downloader.createDownloadTasks(awemeData, userPath)
 
-            // 入库
+            // 提取视频时长
+            let duration: number | null = null
+            if ((awemeData.awemeType || 0) !== 68) {
+              const videoPath = join(userPath, folderName, `${awemeId}_video.mp4`)
+              if (existsSync(videoPath)) {
+                await acquireFfmpegSlot()
+                try {
+                  duration = await getVideoDuration(videoPath)
+                  console.log(`[Downloader] Duration: ${duration}s for ${awemeId}`)
+                } catch (err) {
+                  console.warn(`[Downloader] Failed to get duration:`, err)
+                } finally {
+                  releaseFfmpegSlot()
+                }
+              }
+            }
+
+            // 入库：优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+            const originalDesc =
+              readDescFromFile(join(userPath, folderName), awemeId) ||
+              awemeData.desc ||
+              awemeData.caption ||
+              ''
             createPost({
               aweme_id: awemeId,
               user_id: user.id,
               sec_uid: user.sec_uid,
               nickname: awemeData.nickname || user.nickname,
-              caption: awemeData.caption || '',
-              desc: awemeData.desc || '',
+              caption: originalDesc,
+              desc: originalDesc,
               aweme_type: awemeData.awemeType || 0,
               create_time: awemeData.createTime || '',
               folder_name: folderName,
               video_path: join(userPath, folderName),
               cover_path: join(userPath, folderName),
-              music_path: join(userPath, folderName)
+              music_path: join(userPath, folderName),
+              video_duration: duration
             })
 
             return true
@@ -480,13 +539,8 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
 
   // 动态导入避免循环依赖
   const { fetchVideoDetail, fetchUserProfileBySecUid } = await import('./douyin')
-  const {
-    getSetting,
-    getUserBySecUid,
-    createUser,
-    getPostByAwemeId,
-    createPost
-  } = await import('../database')
+  const { getSetting, getUserBySecUid, createUser, getPostByAwemeId, createPost } =
+    await import('../database')
 
   singleDownloadRunning = true
 
@@ -525,7 +579,11 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       return { success: false, error: '无法获取作者信息' }
     }
 
-    sendSingleProgress({ status: 'parsing', progress: 20, message: `已获取视频信息: ${videoDetail.desc?.slice(0, 30) || awemeId}` })
+    sendSingleProgress({
+      status: 'parsing',
+      progress: 20,
+      message: `已获取视频信息: ${videoDetail.desc?.slice(0, 30) || awemeId}`
+    })
 
     // 3. 检查是否已下载
     const existingPost = getPostByAwemeId(awemeId)
@@ -578,7 +636,11 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       }
     }
 
-    sendSingleProgress({ status: 'downloading', progress: 40, message: `正在下载视频 (作者: ${user.nickname})...` })
+    sendSingleProgress({
+      status: 'downloading',
+      progress: 40,
+      message: `正在下载视频 (作者: ${user.nickname})...`
+    })
 
     // 5. 准备下载目录
     const downloadPath = getDownloadPath()
@@ -599,12 +661,17 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
     try {
       sendSingleProgress({ status: 'downloading', progress: 50, message: '正在下载视频文件...' })
       // PostDetailFilter 有 toAwemeData() 方法，SharePageDetail 直接使用
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const awemeData = typeof (videoDetail as any).toAwemeData === 'function'
-        ? (videoDetail as any).toAwemeData()
-        : videoDetail
+
+      const awemeData =
+        typeof (videoDetail as any).toAwemeData === 'function'
+          ? (videoDetail as any).toAwemeData()
+          : videoDetail
       await downloader.createDownloadTasks(awemeData, userPath)
-      sendSingleProgress({ status: 'downloading', progress: 80, message: '下载完成，正在保存记录...' })
+      sendSingleProgress({
+        status: 'downloading',
+        progress: 80,
+        message: '下载完成，正在保存记录...'
+      })
     } catch (error) {
       const errMsg = `下载失败: ${(error as Error).message}`
       sendSingleProgress({ status: 'failed', progress: 0, message: errMsg })
@@ -623,22 +690,50 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
     const videoAwemeType = vd.awemeType ?? 0
     const videoCreateTime = vd.createTime || ''
 
+    // 提取视频时长
+    let duration: number | null = null
+    if (videoAwemeType !== 68) {
+      const videoPath = join(userPath, folderName, `${awemeId}_video.mp4`)
+      if (existsSync(videoPath)) {
+        await acquireFfmpegSlot()
+        try {
+          duration = await getVideoDuration(videoPath)
+          console.log(`[Downloader] Duration: ${duration}s for ${awemeId}`)
+        } catch (err) {
+          console.warn(`[Downloader] Failed to get duration:`, err)
+        } finally {
+          releaseFfmpegSlot()
+        }
+      }
+    }
+
+    // 优先从 _desc.txt 文件读取原始标题，避免 dy-downloader 返回的转义标题
+    const originalDesc =
+      readDescFromFile(join(userPath, folderName), awemeId) ||
+      videoDesc ||
+      videoCaption ||
+      ''
     const post = createPost({
       aweme_id: awemeId,
       user_id: user.id,
       sec_uid: secUid,
       nickname: videoNickname,
-      caption: videoCaption,
-      desc: videoDesc,
+      caption: originalDesc,
+      desc: originalDesc,
       aweme_type: videoAwemeType,
       create_time: videoCreateTime,
       folder_name: folderName,
       video_path: join(userPath, folderName),
       cover_path: join(userPath, folderName),
-      music_path: join(userPath, folderName)
+      music_path: join(userPath, folderName),
+      video_duration: duration
     })
 
-    sendSingleProgress({ status: 'completed', progress: 100, message: `下载成功: ${videoDesc?.slice(0, 30) || awemeId}` })
+    sendSingleProgress({
+      status: 'completed',
+      progress: 100,
+      message: `下载成功: ${originalDesc?.slice(0, 30) || awemeId}`
+    })
 
     return { success: true, postId: post.id, userId: user.id }
   } catch (error) {

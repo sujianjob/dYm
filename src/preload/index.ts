@@ -13,9 +13,11 @@ const dbAPI = {
 
 const settingsAPI = {
   get: (key: string): Promise<string | null> => ipcRenderer.invoke('settings:get', key),
-  set: (key: string, value: string): Promise<void> => ipcRenderer.invoke('settings:set', key, value),
+  set: (key: string, value: string): Promise<void> =>
+    ipcRenderer.invoke('settings:set', key, value),
   getAll: (): Promise<Record<string, string>> => ipcRenderer.invoke('settings:getAll'),
-  getDefaultDownloadPath: (): Promise<string> => ipcRenderer.invoke('settings:getDefaultDownloadPath')
+  getDefaultDownloadPath: (): Promise<string> =>
+    ipcRenderer.invoke('settings:getDefaultDownloadPath')
 }
 
 const cookieAPI = {
@@ -25,7 +27,8 @@ const cookieAPI = {
 }
 
 const douyinAPI = {
-  getUserProfile: (url: string): Promise<unknown> => ipcRenderer.invoke('douyin:getUserProfile', url),
+  getUserProfile: (url: string): Promise<unknown> =>
+    ipcRenderer.invoke('douyin:getUserProfile', url),
   getSecUserId: (url: string): Promise<string> => ipcRenderer.invoke('douyin:getSecUserId', url),
   parseUrl: (url: string): Promise<{ type: 'user' | 'video' | 'unknown'; id: string }> =>
     ipcRenderer.invoke('douyin:parseUrl', url)
@@ -34,8 +37,10 @@ const douyinAPI = {
 const userAPI = {
   getAll: (): Promise<DbUser[]> => ipcRenderer.invoke('user:getAll'),
   add: (url: string): Promise<DbUser> => ipcRenderer.invoke('user:add', url),
-  delete: (id: number, deleteFiles?: boolean): Promise<void> => ipcRenderer.invoke('user:delete', id, deleteFiles),
-  refresh: (id: number, url: string): Promise<DbUser> => ipcRenderer.invoke('user:refresh', id, url),
+  delete: (id: number, deleteFiles?: boolean): Promise<void> =>
+    ipcRenderer.invoke('user:delete', id, deleteFiles),
+  refresh: (id: number, url: string): Promise<DbUser> =>
+    ipcRenderer.invoke('user:refresh', id, url),
   batchRefresh: (
     users: { id: number; homepage_url: string; nickname: string }[]
   ): Promise<{ success: number; failed: number; details: string[] }> =>
@@ -48,19 +53,27 @@ const userAPI = {
   ): Promise<DbUser | undefined> => ipcRenderer.invoke('user:updateSettings', id, input),
   batchUpdateSettings: (
     ids: number[],
-    input: { show_in_home?: boolean; max_download_count?: number; auto_sync?: boolean; sync_cron?: string }
+    input: {
+      show_in_home?: boolean
+      max_download_count?: number
+      auto_sync?: boolean
+      sync_cron?: string
+    }
   ): Promise<void> => ipcRenderer.invoke('user:batchUpdateSettings', ids, input)
 }
 
 const taskAPI = {
   getAll: (): Promise<DbTaskWithUsers[]> => ipcRenderer.invoke('task:getAll'),
-  getById: (id: number): Promise<DbTaskWithUsers | undefined> => ipcRenderer.invoke('task:getById', id),
-  create: (input: CreateTaskInput): Promise<DbTaskWithUsers> => ipcRenderer.invoke('task:create', input),
+  getById: (id: number): Promise<DbTaskWithUsers | undefined> =>
+    ipcRenderer.invoke('task:getById', id),
+  create: (input: CreateTaskInput): Promise<DbTaskWithUsers> =>
+    ipcRenderer.invoke('task:create', input),
   update: (id: number, input: UpdateTaskInput): Promise<DbTaskWithUsers | undefined> =>
     ipcRenderer.invoke('task:update', id, input),
   updateUsers: (taskId: number, userIds: number[]): Promise<DbTaskWithUsers | undefined> =>
     ipcRenderer.invoke('task:updateUsers', taskId, userIds),
-  updateSchedule: (taskId: number): Promise<void> => ipcRenderer.invoke('task:updateSchedule', taskId),
+  updateSchedule: (taskId: number): Promise<void> =>
+    ipcRenderer.invoke('task:updateSchedule', taskId),
   delete: (id: number): Promise<void> => ipcRenderer.invoke('task:delete', id)
 }
 
@@ -69,7 +82,8 @@ const downloadAPI = {
   stop: (taskId: number): Promise<void> => ipcRenderer.invoke('download:stop', taskId),
   isRunning: (taskId: number): Promise<boolean> => ipcRenderer.invoke('download:isRunning', taskId),
   onProgress: (callback: (progress: DownloadProgress) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: DownloadProgress): void => callback(progress)
+    const handler = (_event: Electron.IpcRendererEvent, progress: DownloadProgress): void =>
+      callback(progress)
     ipcRenderer.on('download:progress', handler)
     return () => ipcRenderer.removeListener('download:progress', handler)
   }
@@ -81,10 +95,13 @@ const syncAPI = {
   isRunning: (userId: number): Promise<boolean> => ipcRenderer.invoke('sync:isRunning', userId),
   getAnySyncing: (): Promise<number | null> => ipcRenderer.invoke('sync:getAnySyncing'),
   getAllSyncing: (): Promise<number[]> => ipcRenderer.invoke('sync:getAllSyncing'),
-  validateCron: (expression: string): Promise<boolean> => ipcRenderer.invoke('sync:validateCron', expression),
-  updateUserSchedule: (userId: number): Promise<void> => ipcRenderer.invoke('sync:updateUserSchedule', userId),
+  validateCron: (expression: string): Promise<boolean> =>
+    ipcRenderer.invoke('sync:validateCron', expression),
+  updateUserSchedule: (userId: number): Promise<void> =>
+    ipcRenderer.invoke('sync:updateUserSchedule', userId),
   onProgress: (callback: (progress: SyncProgress) => void): (() => void) => {
-    const handler = (_event: Electron.IpcRendererEvent, progress: SyncProgress): void => callback(progress)
+    const handler = (_event: Electron.IpcRendererEvent, progress: SyncProgress): void =>
+      callback(progress)
     ipcRenderer.on('sync:progress', handler)
     return () => ipcRenderer.removeListener('sync:progress', handler)
   }
@@ -101,12 +118,20 @@ const schedulerAPI = {
 }
 
 const postAPI = {
-  getAll: (page?: number, pageSize?: number, filters?: PostFilters): Promise<{ posts: DbPost[]; total: number; authors: PostAuthor[] }> =>
+  getAll: (
+    page?: number,
+    pageSize?: number,
+    filters?: PostFilters
+  ): Promise<{ posts: DbPost[]; total: number; authors: PostAuthor[] }> =>
     ipcRenderer.invoke('post:getAll', page, pageSize, filters),
   getAllTags: (): Promise<string[]> => ipcRenderer.invoke('post:getAllTags'),
   getCoverPath: (secUid: string, folderName: string): Promise<string | null> =>
     ipcRenderer.invoke('post:getCoverPath', secUid, folderName),
-  getMediaFiles: (secUid: string, folderName: string, awemeType: number): Promise<MediaFiles | null> =>
+  getMediaFiles: (
+    secUid: string,
+    folderName: string,
+    awemeType: number
+  ): Promise<MediaFiles | null> =>
     ipcRenderer.invoke('post:getMediaFiles', secUid, folderName, awemeType),
   openFolder: (secUid: string, folderName: string): Promise<void> =>
     ipcRenderer.invoke('post:openFolder', secUid, folderName)
@@ -137,7 +162,8 @@ const analysisAPI = {
 
 const videoAPI = {
   getDetail: (url: string): Promise<VideoInfo> => ipcRenderer.invoke('video:getDetail', url),
-  downloadToFolder: (info: VideoInfo): Promise<void> => ipcRenderer.invoke('video:downloadToFolder', info),
+  downloadToFolder: (info: VideoInfo): Promise<void> =>
+    ipcRenderer.invoke('video:downloadToFolder', info),
   downloadSingle: (url: string): Promise<SingleDownloadResult> =>
     ipcRenderer.invoke('video:downloadSingle', url),
   isSingleDownloadRunning: (): Promise<boolean> =>
@@ -163,10 +189,12 @@ const videoAPI = {
 }
 
 const systemAPI = {
-  getResourceUsage: (): Promise<SystemResourceInfo> => ipcRenderer.invoke('system:getResourceUsage'),
+  getResourceUsage: (): Promise<SystemResourceInfo> =>
+    ipcRenderer.invoke('system:getResourceUsage'),
   openDirectoryDialog: (): Promise<string | null> => ipcRenderer.invoke('dialog:openDirectory'),
   openDataDirectory: (): Promise<void> => ipcRenderer.invoke('system:openDataDirectory'),
-  openInAppBrowser: (url: string, title?: string): Promise<void> => ipcRenderer.invoke('system:openInAppBrowser', url, title)
+  openInAppBrowser: (url: string, title?: string): Promise<void> =>
+    ipcRenderer.invoke('system:openInAppBrowser', url, title)
 }
 
 const migrationAPI = {
@@ -175,8 +203,7 @@ const migrationAPI = {
     newPath: string
   ): Promise<{ success: number; failed: number; total: number }> =>
     ipcRenderer.invoke('migration:execute', oldPath, newPath),
-  getCount: (oldPath: string): Promise<number> =>
-    ipcRenderer.invoke('migration:getCount', oldPath)
+  getCount: (oldPath: string): Promise<number> => ipcRenderer.invoke('migration:getCount', oldPath)
 }
 
 const clipboardAPI = {
@@ -203,15 +230,35 @@ const updaterAPI = {
 }
 
 const filesAPI = {
-  getUserPosts: (userId: number, page?: number, pageSize?: number): Promise<{ posts: DbPost[]; total: number }> =>
-    ipcRenderer.invoke('files:getUserPosts', userId, page, pageSize),
+  getUserPosts: (
+    userId: number,
+    page?: number,
+    pageSize?: number,
+    sort?: SortConfig
+  ): Promise<{ posts: DbPost[]; total: number }> =>
+    ipcRenderer.invoke('files:getUserPosts', userId, page, pageSize, sort),
   getFileSizes: (secUid: string): Promise<{ totalSize: number; folderCount: number }> =>
     ipcRenderer.invoke('files:getFileSizes', secUid),
   getPostSize: (secUid: string, folderName: string): Promise<number> =>
     ipcRenderer.invoke('files:getPostSize', secUid, folderName),
   deletePost: (postId: number): Promise<boolean> => ipcRenderer.invoke('files:deletePost', postId),
   deleteUserFiles: (userId: number, secUid: string): Promise<number> =>
-    ipcRenderer.invoke('files:deleteUserFiles', userId, secUid)
+    ipcRenderer.invoke('files:deleteUserFiles', userId, secUid),
+  backfillDurations: (): Promise<{ total: number; succeeded: number; failed: number }> =>
+    ipcRenderer.invoke('files:backfillDurations'),
+  fixAllTitles: (): Promise<{
+    success: boolean
+    result?: { fixed: number; skipped: number; failed: number }
+    error?: string
+  }> => ipcRenderer.invoke('files:fixAllTitles'),
+  onBackfillProgress: (
+    callback: (progress: BackfillProgress) => void
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: BackfillProgress): void =>
+      callback(progress)
+    ipcRenderer.on('files:backfill-progress', handler)
+    return () => ipcRenderer.removeListener('files:backfill-progress', handler)
+  }
 }
 
 const dashboardAPI = {
@@ -224,6 +271,29 @@ const dashboardAPI = {
     ipcRenderer.invoke('dashboard:getTopTags', limit),
   getContentLevelDistribution: (): Promise<LevelDistItem[]> =>
     ipcRenderer.invoke('dashboard:getContentLevelDistribution')
+}
+
+const youtubeAPI = {
+  startAuth: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('youtube:startAuth'),
+  logout: (): Promise<void> => ipcRenderer.invoke('youtube:logout'),
+  isAuthenticated: (): Promise<boolean> => ipcRenderer.invoke('youtube:isAuthenticated'),
+  getChannelInfo: (): Promise<YouTubeChannelInfo | null> =>
+    ipcRenderer.invoke('youtube:getChannelInfo'),
+  listPlaylists: (): Promise<YouTubePlaylistInfo[] | null> =>
+    ipcRenderer.invoke('youtube:listPlaylists'),
+  uploadVideo: (request: YouTubeUploadRequest): Promise<YouTubeUploadResult> =>
+    ipcRenderer.invoke('youtube:uploadVideo', request),
+  uploadBatch: (postIds: number[], playlistId?: string, isShorts?: boolean): Promise<void> =>
+    ipcRenderer.invoke('youtube:uploadBatch', postIds, playlistId, isShorts),
+  cancelUpload: (): Promise<void> => ipcRenderer.invoke('youtube:cancelUpload'),
+  isUploading: (): Promise<boolean> => ipcRenderer.invoke('youtube:isUploading'),
+  onProgress: (callback: (progress: YouTubeUploadProgress) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: YouTubeUploadProgress): void =>
+      callback(progress)
+    ipcRenderer.on('youtube:progress', handler)
+    return () => ipcRenderer.removeListener('youtube:progress', handler)
+  }
 }
 
 const api = {
@@ -245,7 +315,8 @@ const api = {
   migration: migrationAPI,
   clipboard: clipboardAPI,
   files: filesAPI,
-  dashboard: dashboardAPI
+  dashboard: dashboardAPI,
+  youtube: youtubeAPI
 }
 
 if (process.contextIsolated) {
