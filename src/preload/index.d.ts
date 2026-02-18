@@ -226,6 +226,7 @@ declare global {
     youtube_video_id: string | null
     youtube_uploaded_at: number | null
     youtube_playlist_id: string | null
+    video_duration: number | null
   }
 
   interface MediaFiles {
@@ -415,6 +416,15 @@ declare global {
     onDouyinLink: (callback: (link: string) => void) => () => void
   }
 
+  interface BackfillProgress {
+    status: 'running' | 'completed'
+    total: number
+    processed: number
+    succeeded: number
+    failed: number
+    message: string
+  }
+
   interface FilesAPI {
     getUserPosts: (
       userId: number,
@@ -426,6 +436,8 @@ declare global {
     getPostSize: (secUid: string, folderName: string) => Promise<number>
     deletePost: (postId: number) => Promise<boolean>
     deleteUserFiles: (userId: number, secUid: string) => Promise<number>
+    backfillDurations: () => Promise<{ total: number; succeeded: number; failed: number }>
+    onBackfillProgress: (callback: (progress: BackfillProgress) => void) => () => void
   }
 
   interface DashboardOverview {
@@ -490,6 +502,7 @@ declare global {
     privacy?: 'public' | 'unlisted' | 'private'
     category?: string
     playlistId?: string
+    isShorts?: boolean // 新增：是否为 Shorts
   }
 
   interface YouTubePlaylistInfo {
@@ -513,7 +526,7 @@ declare global {
     getChannelInfo: () => Promise<YouTubeChannelInfo | null>
     listPlaylists: () => Promise<YouTubePlaylistInfo[] | null>
     uploadVideo: (request: YouTubeUploadRequest) => Promise<YouTubeUploadResult>
-    uploadBatch: (postIds: number[], playlistId?: string) => Promise<void>
+    uploadBatch: (postIds: number[], playlistId?: string, isShorts?: boolean) => Promise<void>
     cancelUpload: () => Promise<void>
     isUploading: () => Promise<boolean>
     onProgress: (callback: (progress: YouTubeUploadProgress) => void) => () => void

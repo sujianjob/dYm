@@ -56,11 +56,15 @@ export default function SystemPage() {
   const [loadingYoutube, setLoadingYoutube] = useState(false)
   const [youtubeDefaultPlaylist, setYoutubeDefaultPlaylist] = useState('')
 
+  // 视频时长回填
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillProgress, setBackfillProgress] = useState<BackfillProgress | null>(null)
+
   useEffect(() => {
     loadSettings()
     loadVersion()
 
-    const unsubscribe = window.api.updater.onStatus((status) => {
+    const unsubscribeUpdater = window.api.updater.onStatus((status) => {
       setUpdateStatus(status)
       if (status.status === 'error') {
         toast.error(`更新失败: ${status.error}`)
@@ -69,7 +73,18 @@ export default function SystemPage() {
       }
     })
 
-    return () => unsubscribe()
+    const unsubscribeBackfill = window.api.files.onBackfillProgress((progress) => {
+      setBackfillProgress(progress)
+      if (progress.status === 'completed') {
+        setBackfilling(false)
+        toast.success(`时长回填完成：${progress.succeeded} 个成功，${progress.failed} 个跳过`)
+      }
+    })
+
+    return () => {
+      unsubscribeUpdater()
+      unsubscribeBackfill()
+    }
   }, [])
 
   const loadVersion = async () => {
@@ -291,6 +306,20 @@ export default function SystemPage() {
       toast.success('分析设置已保存')
     } catch {
       toast.error('保存失败')
+    }
+  }
+
+  const handleBackfill = async () => {
+    if (backfilling) return
+
+    setBackfilling(true)
+    setBackfillProgress(null)
+
+    try {
+      await window.api.files.backfillDurations()
+    } catch (error) {
+      toast.error(`回填失败: ${(error as Error).message}`)
+      setBackfilling(false)
     }
   }
 
@@ -857,6 +886,58 @@ export default function SystemPage() {
                       <Database className="h-4 w-4" />
                       打开目录
                     </button>
+                  </div>
+
+                  {/* 视频时长回填 */}
+                  <div className="flex flex-col gap-3 py-4 border-t border-[#E5E5E7]">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-[#1D1D1F]">视频时长回填</p>
+                        <p className="text-xs text-[#A1A1A6] mt-1">
+                          为旧视频补充时长信息（新下载的视频会自动提取）
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleBackfill}
+                        disabled={backfilling}
+                        className="h-9 px-4 rounded-lg border border-[#E5E5E7] text-sm text-[#1D1D1F] hover:bg-[#F2F2F4] transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {backfilling ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            处理中...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            回填时长
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* 进度条 */}
+                    {backfillProgress && backfillProgress.status === 'running' && (
+                      <div className="bg-[#F2F2F4] rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-[#1D1D1F]">{backfillProgress.message}</span>
+                          <span className="text-xs text-[#6E6E73]">
+                            {backfillProgress.processed}/{backfillProgress.total}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-white rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#0A84FF] transition-all"
+                            style={{
+                              width: `${(backfillProgress.processed / backfillProgress.total) * 100}%`
+                            }}
+                          />
+                        </div>
+                        <div className="text-xs text-[#6E6E73] mt-2">
+                          成功 {backfillProgress.succeeded} 个，跳过 {backfillProgress.failed} 个
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { DouyinHandler } from 'dy-downloader'
 import { DouyinDownloader } from 'dy-downloader'
 import {
@@ -11,6 +12,7 @@ import {
   type DbTaskWithUsers,
   type DbUser
 } from '../database'
+import { getVideoDuration } from './analyzer'
 
 // 并发控制函数
 async function runWithConcurrency<T>(
@@ -34,6 +36,30 @@ async function runWithConcurrency<T>(
 
   await Promise.all(executing)
   return results
+}
+
+// ffmpeg 并发限制
+const MAX_FFMPEG_CONCURRENCY = 2
+let ffmpegRunning = 0
+const ffmpegQueue: Array<() => void> = []
+
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegRunning < MAX_FFMPEG_CONCURRENCY) {
+    ffmpegRunning++
+    return
+  }
+  return new Promise((resolve) => {
+    ffmpegQueue.push(() => {
+      ffmpegRunning++
+      resolve()
+    })
+  })
+}
+
+function releaseFfmpegSlot(): void {
+  ffmpegRunning--
+  const next = ffmpegQueue.shift()
+  if (next) next()
 }
 
 export interface DownloadProgress {
@@ -347,6 +373,23 @@ async function downloadUserVideos(
           try {
             await downloader.createDownloadTasks(awemeData, userPath)
 
+            // 提取视频时长
+            let duration: number | null = null
+            if ((awemeData.awemeType || 0) !== 68) {
+              const videoPath = join(userPath, folderName, `${awemeId}_video.mp4`)
+              if (existsSync(videoPath)) {
+                await acquireFfmpegSlot()
+                try {
+                  duration = await getVideoDuration(videoPath)
+                  console.log(`[Downloader] Duration: ${duration}s for ${awemeId}`)
+                } catch (err) {
+                  console.warn(`[Downloader] Failed to get duration:`, err)
+                } finally {
+                  releaseFfmpegSlot()
+                }
+              }
+            }
+
             // 入库
             createPost({
               aweme_id: awemeId,
@@ -360,7 +403,8 @@ async function downloadUserVideos(
               folder_name: folderName,
               video_path: join(userPath, folderName),
               cover_path: join(userPath, folderName),
-              music_path: join(userPath, folderName)
+              music_path: join(userPath, folderName),
+              video_duration: duration
             })
 
             return true
@@ -640,6 +684,23 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
     const videoAwemeType = vd.awemeType ?? 0
     const videoCreateTime = vd.createTime || ''
 
+    // 提取视频时长
+    let duration: number | null = null
+    if (videoAwemeType !== 68) {
+      const videoPath = join(userPath, folderName, `${awemeId}_video.mp4`)
+      if (existsSync(videoPath)) {
+        await acquireFfmpegSlot()
+        try {
+          duration = await getVideoDuration(videoPath)
+          console.log(`[Downloader] Duration: ${duration}s for ${awemeId}`)
+        } catch (err) {
+          console.warn(`[Downloader] Failed to get duration:`, err)
+        } finally {
+          releaseFfmpegSlot()
+        }
+      }
+    }
+
     const post = createPost({
       aweme_id: awemeId,
       user_id: user.id,
@@ -652,7 +713,8 @@ export async function downloadSingleVideo(url: string): Promise<SingleDownloadRe
       folder_name: folderName,
       video_path: join(userPath, folderName),
       cover_path: join(userPath, folderName),
-      music_path: join(userPath, folderName)
+      music_path: join(userPath, folderName),
+      video_duration: duration
     })
 
     sendSingleProgress({

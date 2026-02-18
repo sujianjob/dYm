@@ -493,3 +493,5 @@ export function stopAnalysis(): void {
 export function isAnalysisRunning(): boolean {
   return isAnalyzing
 }
+
+export { getVideoDuration }

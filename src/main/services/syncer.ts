@@ -1,5 +1,6 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
+import { existsSync } from 'fs'
 import { DouyinHandler, DouyinDownloader } from 'dy-downloader'
 import {
   getUserById,
@@ -8,6 +9,7 @@ import {
   getPostByAwemeId,
   updateUserSyncStatus
 } from '../database'
+import { getVideoDuration } from './analyzer'
 
 export interface SyncProgress {
   userId: number
@@ -25,6 +27,30 @@ interface SyncState {
 }
 
 const runningSyncs: Map<number, SyncState> = new Map()
+
+// ffmpeg 并发限制
+const MAX_FFMPEG_CONCURRENCY = 2
+let ffmpegRunning = 0
+const ffmpegQueue: Array<() => void> = []
+
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegRunning < MAX_FFMPEG_CONCURRENCY) {
+    ffmpegRunning++
+    return
+  }
+  return new Promise((resolve) => {
+    ffmpegQueue.push(() => {
+      ffmpegRunning++
+      resolve()
+    })
+  })
+}
+
+function releaseFfmpegSlot(): void {
+  ffmpegRunning--
+  const next = ffmpegQueue.shift()
+  if (next) next()
+}
 
 function sendProgress(progress: SyncProgress): void {
   const windows = BrowserWindow.getAllWindows()
@@ -237,6 +263,23 @@ export async function startUserSync(userId: number): Promise<void> {
           try {
             await downloader.createDownloadTasks(awemeData, userPath)
 
+            // 提取视频时长
+            let duration: number | null = null
+            if ((awemeData.awemeType || 0) !== 68) {
+              const videoPath = join(userPath, awemeId, `${awemeId}_video.mp4`)
+              if (existsSync(videoPath)) {
+                await acquireFfmpegSlot()
+                try {
+                  duration = await getVideoDuration(videoPath)
+                  console.log(`[Syncer] Duration: ${duration}s for ${awemeId}`)
+                } catch (err) {
+                  console.warn(`[Syncer] Failed to get duration:`, err)
+                } finally {
+                  releaseFfmpegSlot()
+                }
+              }
+            }
+
             createPost({
               aweme_id: awemeId,
               user_id: user.id,
@@ -249,7 +292,8 @@ export async function startUserSync(userId: number): Promise<void> {
               folder_name: awemeId,
               video_path: join(userPath, awemeId),
               cover_path: join(userPath, awemeId),
-              music_path: join(userPath, awemeId)
+              music_path: join(userPath, awemeId),
+              video_duration: duration
             })
 
             return true

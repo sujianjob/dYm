@@ -46,6 +46,14 @@ function formatSize(bytes: number): string {
   return (bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + ' ' + units[i]
 }
 
+// 格式化视频时长
+function formatDuration(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return ''
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
 interface UserWithSize extends DbUser {
   fileSize: number
   folderCount: number
@@ -83,6 +91,7 @@ export default function FilesPage() {
   const [uploadProgress, setUploadProgress] = useState<YouTubeUploadProgress | null>(null)
   const [youtubeFilter, setYoutubeFilter] = useState<'all' | 'uploaded' | 'not-uploaded'>('all')
   const [selectedPlaylist, setSelectedPlaylist] = useState('')
+  const [isShortsBatch, setIsShortsBatch] = useState(false)
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
   const [validPostIds, setValidPostIds] = useState<number[]>([])
 
@@ -304,7 +313,8 @@ export default function FilesPage() {
     try {
       await window.api.youtube.uploadBatch(
         validPostIds,
-        selectedPlaylist || undefined
+        selectedPlaylist || undefined,
+        isShortsBatch // 传递 Shorts 选择
       )
     } catch (error) {
       toast.error(`批量上传启动失败: ${(error as Error).message}`)
@@ -681,6 +691,12 @@ export default function FilesPage() {
                               YouTube
                             </div>
                           )}
+                          {/* Duration badge - 左下角，增强可见性 */}
+                          {post.video_duration && post.aweme_type !== IMAGE_AWEME_TYPE && (
+                            <div className="absolute bottom-2 left-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded font-mono z-10 shadow-sm">
+                              {formatDuration(post.video_duration)}
+                            </div>
+                          )}
                           {post.create_time && (
                             <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                               {formatDate(post.create_time)}
@@ -774,20 +790,48 @@ export default function FilesPage() {
       <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>选择播放列表</DialogTitle>
+            <DialogTitle>批量上传到 YouTube</DialogTitle>
             <DialogDescription>
-              将 {validPostIds.length} 个视频上传到 YouTube，可选择添加到播放列表
+              将选中的 {validPostIds.length} 个视频上传到 YouTube
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <PlaylistSelector
-              value={selectedPlaylist}
-              onChange={setSelectedPlaylist}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-3 px-1">
-              提示：您可以选择一个播放列表，或选择"不添加到播放列表"直接上传视频
-            </p>
+          <div className="space-y-4 py-4">
+            {/* 视频类型选择 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">视频类型</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="batchVideoType"
+                    checked={!isShortsBatch}
+                    onChange={() => setIsShortsBatch(false)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">普通视频</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="batchVideoType"
+                    checked={isShortsBatch}
+                    onChange={() => setIsShortsBatch(true)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">YouTube Shorts</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 播放列表选择 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">播放列表（可选）</label>
+              <PlaylistSelector
+                value={selectedPlaylist}
+                onChange={setSelectedPlaylist}
+                className="w-full"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button

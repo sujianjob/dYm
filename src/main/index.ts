@@ -62,7 +62,9 @@ import {
   getDownloadTrend,
   getUserVideoDistribution,
   getTopTags,
-  getContentLevelDistribution
+  getContentLevelDistribution,
+  getPostsWithoutDuration,
+  updatePostDuration
 } from './database'
 import { fetchDouyinCookie, refreshDouyinCookieSilent, isCookieRefreshing } from './services/cookie'
 import {
@@ -832,6 +834,119 @@ app.whenReady().then(() => {
     return count
   })
 
+  // 批量回填视频时长
+  ipcMain.handle('files:backfillDurations', async () => {
+    const posts = getPostsWithoutDuration()
+    const total = posts.length
+    let processed = 0
+    let succeeded = 0
+    let failed = 0
+
+    if (total === 0) {
+      mainWindow?.webContents.send('files:backfill-progress', {
+        status: 'completed',
+        total: 0,
+        processed: 0,
+        succeeded: 0,
+        failed: 0,
+        message: '没有需要处理的视频'
+      })
+      return { total: 0, succeeded: 0, failed: 0 }
+    }
+
+    mainWindow?.webContents.send('files:backfill-progress', {
+      status: 'running',
+      total,
+      processed: 0,
+      succeeded: 0,
+      failed: 0,
+      message: `开始处理 ${total} 个视频...`
+    })
+
+    const { getVideoDuration } = await import('./services/analyzer')
+    const downloadPath = getDownloadPath()
+
+    // 并发控制：最多2个 ffmpeg 同时运行
+    const MAX_CONCURRENCY = 2
+    let running = 0
+    const queue = [...posts]
+
+    const processNext = async (): Promise<void> => {
+      if (queue.length === 0) return
+
+      const post = queue.shift()!
+      running++
+
+      try {
+        const videoPath = join(downloadPath, post.sec_uid, post.folder_name, `${post.folder_name}_video.mp4`)
+
+        if (existsSync(videoPath)) {
+          const duration = await getVideoDuration(videoPath)
+          updatePostDuration(post.id, duration)
+          succeeded++
+        } else {
+          // 尝试查找任意 mp4 文件
+          const { readdirSync } = await import('fs')
+          const folderPath = join(downloadPath, post.sec_uid, post.folder_name)
+          if (existsSync(folderPath)) {
+            const files = readdirSync(folderPath)
+            const mp4 = files.find((f) => f.endsWith('.mp4'))
+            if (mp4) {
+              const duration = await getVideoDuration(join(folderPath, mp4))
+              updatePostDuration(post.id, duration)
+              succeeded++
+            } else {
+              failed++
+            }
+          } else {
+            failed++
+          }
+        }
+      } catch (err) {
+        console.warn(`[Backfill] Failed for post ${post.id}:`, err)
+        failed++
+      } finally {
+        running--
+        processed++
+        mainWindow?.webContents.send('files:backfill-progress', {
+          status: 'running',
+          total,
+          processed,
+          succeeded,
+          failed,
+          message: `正在处理 ${processed}/${total}...`
+        })
+      }
+    }
+
+    // 并发处理队列
+    const runConcurrent = async (): Promise<void> => {
+      const workers: Promise<void>[] = []
+      const worker = async (): Promise<void> => {
+        while (queue.length > 0) {
+          await processNext()
+        }
+      }
+      for (let i = 0; i < MAX_CONCURRENCY; i++) {
+        workers.push(worker())
+      }
+      await Promise.all(workers)
+    }
+
+    await runConcurrent()
+
+    mainWindow?.webContents.send('files:backfill-progress', {
+      status: 'completed',
+      total,
+      processed,
+      succeeded,
+      failed,
+      message: `完成：${succeeded} 成功，${failed} 跳过`
+    })
+
+    return { total, succeeded, failed }
+  })
+
   // Database IPC handlers
   ipcMain.handle('db:execute', (_event, sql: string, params?: unknown[]) => {
     const db = getDatabase()
@@ -1254,11 +1369,14 @@ app.whenReady().then(() => {
     }
   )
 
-  ipcMain.handle('youtube:uploadBatch', async (_event, postIds: number[], playlistId?: string) => {
-    const { uploadBatch, setMainWindow } = await import('./services/youtube')
-    if (mainWindow) setMainWindow(mainWindow)
-    return uploadBatch(postIds, playlistId)
-  })
+  ipcMain.handle(
+    'youtube:uploadBatch',
+    async (_event, postIds: number[], playlistId?: string, isShorts?: boolean) => {
+      const { uploadBatch, setMainWindow } = await import('./services/youtube')
+      if (mainWindow) setMainWindow(mainWindow)
+      return uploadBatch(postIds, playlistId, isShorts)
+    }
+  )
 
   ipcMain.handle('youtube:cancelUpload', async () => {
     const { cancelUpload } = await import('./services/youtube')

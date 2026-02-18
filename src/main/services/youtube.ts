@@ -18,7 +18,7 @@ import {
   readdirSync,
   statSync
 } from 'fs'
-import { getSetting, getPostById, updatePostYouTubeStatus } from '../database'
+import { getSetting, getPostById, updatePostYouTubeStatus, type DbPost } from '../database'
 
 // ========== 类型定义 ==========
 
@@ -48,6 +48,7 @@ export interface YouTubeUploadRequest {
   privacy?: 'public' | 'unlisted' | 'private'
   category?: string
   playlistId?: string
+  isShorts?: boolean // 是否为 Shorts
 }
 
 export interface YouTubePlaylistInfo {
@@ -371,26 +372,73 @@ export async function getChannelInfo(): Promise<YouTubeChannelInfo | null> {
 
 // ========== 视频文件选择逻辑 ==========
 
-function getVideoUploadInfo(secUid: string, folderName: string): VideoUploadInfo | null {
+function getVideoUploadInfo(
+  secUid: string,
+  folderName: string,
+  post?: DbPost
+): VideoUploadInfo | null {
   const folderPath = join(getDownloadPath(), secUid, folderName)
   if (!existsSync(folderPath)) return null
 
   const awemeId = folderName
   const descPath = join(folderPath, `${awemeId}_desc.txt`)
 
-  // 解析标题和标签
-  let title = ''
+  // 标签提取（三级优先级）
   let tags: string[] = []
-  if (existsSync(descPath)) {
-    const content = readFileSync(descPath, 'utf-8').trim()
-    // 提取 #标签
-    const tagMatches = content.match(/#[\w\u4e00-\u9fa5]+/g) || []
-    tags = tagMatches.map((t) => t.slice(1)) // 去掉 # 前缀
-    // 标题为去掉标签后的内容
-    title = content.replace(/#[\w\u4e00-\u9fa5]+/g, '').trim()
-    if (!title) {
-      title = content.slice(0, 50) // 如果全是标签，取前50字符
+
+  // 优先级 1: AI 分析标签
+  if (post?.analysis_tags) {
+    try {
+      const aiTags = JSON.parse(post.analysis_tags)
+      if (Array.isArray(aiTags) && aiTags.length > 0) {
+        tags = aiTags
+          .filter((tag) => typeof tag === 'string' && tag.length > 0 && tag.length <= 30)
+          .slice(0, 500)
+        console.log(`[YouTube] Using AI tags: ${tags.length}`)
+      }
+    } catch (err) {
+      console.warn(`[YouTube] Failed to parse AI tags:`, err)
     }
+  }
+
+  // 优先级 2: desc.txt 标签（Fallback）
+  if (tags.length === 0) {
+    if (existsSync(descPath)) {
+      const content = readFileSync(descPath, 'utf-8').trim()
+      // 修复：匹配 # 后跟任意字符（包括空格），直到下一个 # 或行尾
+      // 使用 [^#\n]+ 匹配除了 # 和换行符之外的所有字符
+      const tagMatches = content.match(/#[^#\n]+/g) || []
+      tags = tagMatches
+        .map((t) => t.slice(1).trim()) // 移除 # 并去除首尾空格
+        .filter((tag) => tag.length > 0 && tag.length <= 30)
+        .slice(0, 500)
+      console.log(`[YouTube] Using desc.txt tags: ${tags.length}`)
+    }
+  }
+
+  // 优先级 3: 空数组（不报错）
+  if (tags.length === 0) {
+    console.log(`[YouTube] No tags found for ${awemeId}`)
+  }
+
+  // 标题优先使用数据库字段
+  let title = ''
+  if (post) {
+    title = post.caption || post.desc || ''
+  }
+  if (!title) {
+    // Fallback: 从 desc.txt 读取
+    if (existsSync(descPath)) {
+      const content = readFileSync(descPath, 'utf-8').trim()
+      // 修复：移除所有标签（# 开头到下一个 # 或行尾）
+      title = content.replace(/#[^#\n]+/g, '').trim()
+      if (!title) {
+        title = content.slice(0, 50)
+      }
+    }
+  }
+  if (!title) {
+    title = awemeId
   }
 
   // 优先级 1: 查找处理后的视频 ({desc}.mp4 格式，非原始 *_video.mp4)
@@ -463,7 +511,7 @@ export async function uploadToYouTube(
     return { success: false, error: '作品不存在' }
   }
 
-  const uploadInfo = getVideoUploadInfo(post.sec_uid, post.folder_name)
+  const uploadInfo = getVideoUploadInfo(post.sec_uid, post.folder_name, post)
   if (!uploadInfo) {
     return { success: false, error: '未找到可上传的视频文件' }
   }
@@ -475,7 +523,9 @@ export async function uploadToYouTube(
 
   const youtube = google.youtube({ version: 'v3', auth })
   const privacy = options?.privacy || getSetting('youtube_default_privacy') || 'unlisted'
-  const category = options?.category || getSetting('youtube_default_category') || '22'
+  const category = options?.isShorts
+    ? '15' // Shorts 专用分类 (Shorts)
+    : options?.category || getSetting('youtube_default_category') || '22' // 默认分类 (People & Blogs)
   const playlistId = options?.playlistId || getSetting('youtube_default_playlist_id') || ''
   const videoSize = statSync(uploadInfo.videoPath).size
 
@@ -612,7 +662,11 @@ export async function uploadToYouTube(
 
 // ========== 批量上传 ==========
 
-export async function uploadBatch(postIds: number[], playlistId?: string): Promise<void> {
+export async function uploadBatch(
+  postIds: number[],
+  playlistId?: string,
+  isShorts?: boolean
+): Promise<void> {
   if (isUploading) {
     sendProgress({
       status: 'failed',
@@ -664,7 +718,7 @@ export async function uploadBatch(postIds: number[], playlistId?: string): Promi
         message: `正在上传 ${i + 1}/${total}`
       })
 
-      const result = await uploadToYouTube(postId, { playlistId })
+      const result = await uploadToYouTube(postId, { playlistId, isShorts })
 
       if (result.success) {
         uploadedCount++

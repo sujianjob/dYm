@@ -243,7 +243,17 @@ const filesAPI = {
     ipcRenderer.invoke('files:getPostSize', secUid, folderName),
   deletePost: (postId: number): Promise<boolean> => ipcRenderer.invoke('files:deletePost', postId),
   deleteUserFiles: (userId: number, secUid: string): Promise<number> =>
-    ipcRenderer.invoke('files:deleteUserFiles', userId, secUid)
+    ipcRenderer.invoke('files:deleteUserFiles', userId, secUid),
+  backfillDurations: (): Promise<{ total: number; succeeded: number; failed: number }> =>
+    ipcRenderer.invoke('files:backfillDurations'),
+  onBackfillProgress: (
+    callback: (progress: BackfillProgress) => void
+  ): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, progress: BackfillProgress): void =>
+      callback(progress)
+    ipcRenderer.on('files:backfill-progress', handler)
+    return () => ipcRenderer.removeListener('files:backfill-progress', handler)
+  }
 }
 
 const dashboardAPI = {
@@ -269,8 +279,8 @@ const youtubeAPI = {
     ipcRenderer.invoke('youtube:listPlaylists'),
   uploadVideo: (request: YouTubeUploadRequest): Promise<YouTubeUploadResult> =>
     ipcRenderer.invoke('youtube:uploadVideo', request),
-  uploadBatch: (postIds: number[], playlistId?: string): Promise<void> =>
-    ipcRenderer.invoke('youtube:uploadBatch', postIds, playlistId),
+  uploadBatch: (postIds: number[], playlistId?: string, isShorts?: boolean): Promise<void> =>
+    ipcRenderer.invoke('youtube:uploadBatch', postIds, playlistId, isShorts),
   cancelUpload: (): Promise<void> => ipcRenderer.invoke('youtube:cancelUpload'),
   isUploading: (): Promise<boolean> => ipcRenderer.invoke('youtube:isUploading'),
   onProgress: (callback: (progress: YouTubeUploadProgress) => void): (() => void) => {

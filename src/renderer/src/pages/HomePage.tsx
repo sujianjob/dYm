@@ -29,6 +29,14 @@ const IMAGE_AWEME_TYPE = 68
 const PAGE_SIZE = 50
 const SORT_STORAGE_KEY = 'home-page-sort'
 
+// 格式化视频时长
+function formatDuration(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return ''
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
 export default function HomePage() {
   const [posts, setPosts] = useState<DbPost[]>([])
   const [total, setTotal] = useState(0)
@@ -545,6 +553,12 @@ export default function HomePage() {
                           <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">
                             {isImagePost(post) ? '图集' : '视频'}
                           </div>
+                          {/* Duration badge - 左下角，增强可见性 */}
+                          {post.video_duration && post.aweme_type !== IMAGE_AWEME_TYPE && (
+                            <div className="absolute bottom-2 left-2 bg-black/80 text-white text-xs px-2 py-0.5 rounded font-mono z-10 shadow-sm">
+                              {formatDuration(post.video_duration)}
+                            </div>
+                          )}
                           {/* Date badge */}
                           {post.create_time && (
                             <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-0.5 rounded">

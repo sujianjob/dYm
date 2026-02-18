@@ -12,12 +12,21 @@ import {
   Film,
   Clock,
   Upload,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog'
 import { Button } from './ui/button'
 import { PlaylistSelector } from './PlaylistSelector'
+
+// 格式化视频时长
+function formatDuration(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return ''
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 interface MediaViewerProps {
   post: DbPost | null
@@ -48,6 +57,7 @@ export function MediaViewer({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<YouTubeUploadProgress | null>(null)
   const [selectedPlaylist, setSelectedPlaylist] = useState('')
+  const [isShorts, setIsShorts] = useState(false)
   const [showPlaylistDialog, setShowPlaylistDialog] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -302,7 +312,8 @@ export function MediaViewer({
     try {
       const result = await window.api.youtube.uploadVideo({
         postId: post.id,
-        playlistId: selectedPlaylist || undefined
+        playlistId: selectedPlaylist || undefined,
+        isShorts // 传递 Shorts 选择
       })
       if (result.success) {
         toast.success('上传成功')
@@ -637,20 +648,52 @@ export function MediaViewer({
       <Dialog open={showPlaylistDialog} onOpenChange={setShowPlaylistDialog}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>选择播放列表</DialogTitle>
-            <DialogDescription>
-              上传视频到 YouTube，可选择添加到播放列表
-            </DialogDescription>
+            <DialogTitle>上传到 YouTube</DialogTitle>
+            <DialogDescription>配置上传选项后开始上传视频</DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <PlaylistSelector
-              value={selectedPlaylist}
-              onChange={setSelectedPlaylist}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground mt-3 px-1">
-              提示：您可以选择一个播放列表，或选择"不添加到播放列表"直接上传视频
-            </p>
+          <div className="space-y-4 py-4">
+            {/* 视频类型选择 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">视频类型</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="videoType"
+                    checked={!isShorts}
+                    onChange={() => setIsShorts(false)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">普通视频</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="videoType"
+                    checked={isShorts}
+                    onChange={() => setIsShorts(true)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">YouTube Shorts</span>
+                </label>
+              </div>
+              {isShorts && post?.video_duration && post.video_duration > 60 && (
+                <p className="text-xs text-orange-500 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  提示：Shorts 建议时长 ≤ 60 秒，当前视频 {formatDuration(post.video_duration)}
+                </p>
+              )}
+            </div>
+
+            {/* 播放列表选择 */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">播放列表（可选）</label>
+              <PlaylistSelector
+                value={selectedPlaylist}
+                onChange={setSelectedPlaylist}
+                className="w-full"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button

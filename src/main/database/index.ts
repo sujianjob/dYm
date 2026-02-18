@@ -241,6 +241,13 @@ export function initDatabase(): void {
   }
   database.exec(`CREATE INDEX IF NOT EXISTS idx_posts_youtube_uploaded ON posts(youtube_uploaded)`)
 
+  // 迁移：为 posts 表添加 video_duration 字段
+  try {
+    database.exec('ALTER TABLE posts ADD COLUMN video_duration REAL')
+  } catch {
+    // 列已存在，忽略错误
+  }
+
   // 初始化默认设置
   const defaultSettings = [
     { key: 'douyin_cookie', value: '' },
@@ -761,6 +768,8 @@ export interface DbPost {
   youtube_video_id: string | null
   youtube_uploaded_at: number | null
   youtube_playlist_id: string | null
+  // 视频时长
+  video_duration: number | null
 }
 
 export interface CreatePostInput {
@@ -776,13 +785,14 @@ export interface CreatePostInput {
   cover_path?: string
   video_path?: string
   music_path?: string
+  video_duration?: number | null
 }
 
 export function createPost(input: CreatePostInput): DbPost {
   const database = getDatabase()
   const stmt = database.prepare(`
-    INSERT INTO posts (aweme_id, user_id, sec_uid, nickname, caption, desc, aweme_type, create_time, folder_name, cover_path, video_path, music_path)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO posts (aweme_id, user_id, sec_uid, nickname, caption, desc, aweme_type, create_time, folder_name, cover_path, video_path, music_path, video_duration)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const result = stmt.run(
     input.aweme_id,
@@ -796,7 +806,8 @@ export function createPost(input: CreatePostInput): DbPost {
     input.folder_name,
     input.cover_path || null,
     input.video_path || null,
-    input.music_path || null
+    input.music_path || null,
+    input.video_duration || null
   )
   return getPostById(result.lastInsertRowid as number)!
 }
@@ -1159,6 +1170,27 @@ export function getMigrationCount(oldBasePath: string): number {
     .prepare(`SELECT COUNT(*) as cnt FROM posts WHERE video_path LIKE ?`)
     .get(`${prefix}%`) as { cnt: number }
   return row.cnt
+}
+
+// 获取没有时长的视频列表
+export function getPostsWithoutDuration(): DbPost[] {
+  const database = getDatabase()
+  return database
+    .prepare(
+      `SELECT * FROM posts
+       WHERE video_duration IS NULL
+       AND aweme_type != 68
+       ORDER BY downloaded_at DESC`
+    )
+    .all() as DbPost[]
+}
+
+// 更新作品时长
+export function updatePostDuration(id: number, duration: number): void {
+  const database = getDatabase()
+  database
+    .prepare('UPDATE posts SET video_duration = ? WHERE id = ?')
+    .run(duration, id)
 }
 
 // 批量替换路径前缀
